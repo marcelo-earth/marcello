@@ -1,0 +1,26 @@
+sources:
+  - type: text_files
+    path: data/raw/writing_samples/
+  - type: jsonl
+    path: data/raw/messages.jsonl
+    text_field: text
+
+processing:
+  min_length: 50
+  max_length: 2048
+  remove_urls: true
+  remove_emails: true
+  normalize_whitespace: true
+  deduplicate: true
+
+negative_sampling:
+  strategy: llm_rephrase
+  model: Qwen/Qwen2.5-1.5B
+  num_negatives_per_positive: 2
+  seed: 42
+
+output:
+  path: data/processed/
+  train_split: 0.85
+  val_split: 0.15
+  seed: 42
