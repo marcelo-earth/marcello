@@ -1,0 +1,35 @@
+model:
+  name: Qwen/Qwen2.5-1.5B
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
+grpo:
+  num_generations: 8
+  max_new_tokens: 256
+  temperature: 0.8
+  top_p: 0.95
+
+training:
+  learning_rate: 5e-7
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  num_train_epochs: 3
+  kl_coef: 0.1
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  use_wandb: false
+
+reward:
+  classifier_path: outputs/classifier/best
+  temperature: 1.0
+
+prompts:
+  path: data/processed/prompts
+  # prompts are extracted from Marcelo's writing:
+  # first sentence of each sample becomes a prompt
+
+output:
+  dir: outputs/grpo
