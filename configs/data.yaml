@@ -1,9 +1,14 @@
 sources:
   - type: text_files
     path: data/raw/writing_samples/
+    style: poetic
+  - type: text_files
+    path: data/raw/writing_samples_blog/
+    style: standard
   - type: jsonl
     path: data/raw/messages.jsonl
     text_field: text
+    style: standard
 
 processing:
   min_length: 50

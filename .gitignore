@@ -18,6 +18,7 @@ venv/
 
 data/raw/*
 !data/raw/writing_samples/
+!data/raw/writing_samples_blog/
 data/processed/
 outputs/
 wandb/

@@ -1,0 +1,45 @@
+The art of learning
+
+I was luckier than I thought. Content creation teaches you something very concrete. You must deliver a payoff. If you say “Did you know…”, you have to actually give a new piece of information. Otherwise people leave. If attention is the raw material of learning, then education cannot ignore how it is being trained outside the classroom.
+
+We are trying to teach depth in a world optimized for speed. The same systems that train our attention every day are designed to reduce friction, shorten cycles, and maximize stimulation. Education moves in the opposite direction. It requires friction. It requires pauses. It requires moments where nothing exciting happens and nothing is created, but something meaningful consolidates.
+
+Platforms like TikTok rely on variable reward systems, a concept studied in behavioral psychology. When the payoff is unpredictable, behavior becomes more persistent. You scroll because the next video might be extraordinary. That uncertainty keeps the loop alive. Education cannot and should not depend on the same mechanism. But it must understand it. If we ignore how attention is shaped, we design learning experiences that are invisible next to algorithmic entertainment.
+
+Four years ago, I wrote this:
+
+I believe few things are as satisfying as understanding the full picture of a topic or a clear definition. I chose to teach using visual tools, without leaving aside practice and programming.
+
+That idea is still true for me.
+
+But programming is changing with Artificial General Intelligence, and the way we learn it is changing too.
+
+People’s attention spans are shorter now. We live inside a constant flow of information, driven by social media. I saw this clearly when I changed my own content. When I moved from long content to short content, my reach grew much faster. I studied how algorithms work. I learned how attention behaves.
+
+I don’t believe people only learn through visualizations.
+
+But visualizations are often the easiest way to capture attention. Learning can happen through many formats: reading, building, writing, teaching, discussing. What really matters are other factors: spaced repetition, practice, evaluation, and creation. Most of my work tries to cover these elements.
+
+During the last year, building software became easier and more accessible. Because of that, I feel confident using hypothesis-driven methods to design better learning experiences. I focus on being concise, repeating ideas over time, applying them, evaluating results, and encouraging creation.
+
+I believe creation is one of the strongest ways to learn. Evaluation and critique matter too. That’s why I push students to build things and share their work. There are many layers in creating something useful. Publishing is rarely the final step. Distribution comes after. But not publishing at all is worse. If you don’t share your work, learning stays incomplete. New ideas need exposure to grow.
+
+Another key part of learning is accompanying the student. Learning does not end when a course ends. After a course or mentorship, follow-ups matter. There is life after certification. Think about the courses you finished. How many did you truly apply? How many changed how you think or work? Only a few usually do.
+
+Some people feel they are not ready to create. This can come from low confidence or lack of agency. I understand that feeling, but I still push. Growth often starts before you feel ready.
+
+I dislike how companies sometimes reject people just for having completed a course. That should not be the end. Learning should lead to action. It’s similar to research: you may not need to write a thesis, but if you learned something, apply it. Build a real project. Use it in your job. Do something with it.
+
+One topic that creates debate is chunking information. Some people think short lessons mean shallow learning. That’s not true. Smaller chunks help people finish courses and realize that learning can feel approachable. This often leads them to learn more. Long courses, on the other hand, feel deep but are rarely completed. I believe balance matters.
+
+When I design a syllabus, I don’t think much about the number of classes. I think about chunks. Clear chunks lead to short lessons. Short lessons can still form long and deep courses. That balance works best for me.
+
+Fun also matters. But fun should not distract from learning. This is hard. We compete with platforms like TikTok and YouTube, where content keeps getting shorter. I try to use fun as part of the learning experience, not as noise.
+
+Finally, mentorship matters a lot. It is often underused. Courses are made for many people. Mentorships are made for one person. For specific problems, questions, and goals. They cost more, yes, but they offer depth. I personally find one-on-one learning clearer and easier than group learning.
+
+That’s where I am now. After a medical pause, I’m back working on education with love again. I’m building workshops and mentorships that respect attention, use repetition, encourage practice, allow evaluation, and most of all, push people to create.
+
+I don’t believe learning should not stop at understanding.
+
+It should end in action.

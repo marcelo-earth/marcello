@@ -16,6 +16,7 @@ class WritingSample:
     text: str
     source: str
     source_type: str = "unknown"  # txt, jsonl, csv
+    style: str = "standard"  # poetic, standard
     metadata: dict = field(default_factory=dict)
 
 
@@ -32,6 +33,11 @@ class WritingSampleCollector:
         self.min_length = min_length
         self.max_length = max_length
         self._samples: list[WritingSample] = []
+        self._current_style: str = "standard"
+
+    def set_style(self, style: str):
+        """Set the style label for subsequently collected samples."""
+        self._current_style = style
 
     def collect_from_txt(self, path: Path, split_on_blank_lines: bool = True) -> int:
         """Load samples from a plain text file.
@@ -50,7 +56,10 @@ class WritingSampleCollector:
         for chunk in chunks:
             if self.min_length <= len(chunk) <= self.max_length:
                 self._samples.append(
-                    WritingSample(text=chunk, source=str(path), source_type="txt")
+                    WritingSample(
+                        text=chunk, source=str(path),
+                        source_type="txt", style=self._current_style,
+                    )
                 )
                 added += 1
         return added
@@ -71,6 +80,7 @@ class WritingSampleCollector:
                             text=text,
                             source=str(path),
                             source_type="jsonl",
+                            style=self._current_style,
                             metadata={k: v for k, v in obj.items() if k != text_field},
                         )
                     )
@@ -102,6 +112,7 @@ class WritingSampleCollector:
                 "text": [s.text for s in self._samples],
                 "source": [s.source for s in self._samples],
                 "source_type": [s.source_type for s in self._samples],
+                "style": [s.style for s in self._samples],
                 "label": [1] * len(self._samples),  # all positive (Marcelo's writing)
             }
         )

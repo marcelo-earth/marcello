@@ -1,0 +1,91 @@
+Love as the medium
+
+Are you looking for an easy way to connect with more people on your next website or app? Let me introduce some key concepts. I believe love, gratitude, and appreciation are safe spaces where the next generation of software will move in the coming years. As social software creators, this comes with sacrifices when designing experiences that can also make your own creation grow. It’s a tough puzzle. Yes, and it takes a lot of research and experimentation. But at least you know where to start.
+
+Intention vs IncentiveThe biggest software platforms in our world have implemented techniques to keep users spending more time on their apps, which contradicts their intended purpose. Platforms like Instagram, YouTube, and TikTok also include screen time reminders and usage dashboards that allow users to monitor or limit how long they stay. They also have access to professionals and psychologists on their teams who help shape the design itself. That’s the intention.
+
+Now from intention to incentive. This is like fame, but even harder. In some ways, getting attention can be easy. But getting it right, and ethically, is not. The incentive to grow often conflicts with the incentive to create meaning.
+
+Growth rewards attention. Attention rewards engagement. Engagement often rewards what is stimulating, polarizing, addictive, or emotionally intense. Not necessarily what is meaningful.
+
+This is where the conflict begins.
+
+Intention says help people live better lives.
+
+Incentive says keep them here longer.
+
+While the focus is usually on optimizing the tool’s usefulness:
+
+omg, are you telling me this simplifies my life? 🥹
+
+Building useful tools is relatively easy. If something simplifies your life automagically you adopt it. That part is straightforward. The only difficulty being how to present it to the user in the simplest way possible
+
+Social software is different. It doesn’t solve a problem itself. There is a very strong “Why?”. Because it shapes behavior. It amplifies our human desires. It changes how people see themselves and others.
+
+The real challenge is not technical. It is cultural and psychological. You cannot fully explain why a social product works before it works. It is like explaining a joke. Once you explain it, it loses its magic.
+
+Even teams with product managers, analysts, and psychologists struggle with this. Technology is no longer the hard part. Distribution is. Alignment is. Designing incentives that do not betray the original intention is.
+
+In the end, incentives shape behavior more than intention ever will.
+
+Incentives Shape BehaviorTwitter offers a clear example of how incentives shape behavior.
+
+At different points, its algorithm appeared to amplify disagreement. People are more likely to reply when they disagree than when they agree. Disagreement drives engagement. Politics becomes fuel. If your only goal is growth, this makes sense. But what grows is not always what improves the experience.
+
+When outrage becomes the engine, the feed degrades. The product may grow in numbers while declining in quality. Some of these changes were later adjusted or reverted. It is unclear for me whether that was due to public backlash or measurable drops in activity. What is clear is that engagement alone is not a reliable proxy for value.
+
+To build a good social product, you need rules. And you also need growth. At first glance, this seems opposed to pure free speech. But growth does not require chaos. Structure does not mean suppression. Structure means designing boundaries that protect the experience.
+
+There was a theory that if Nikita Bier had joined Twitter as Head of Product, he might have influenced a different direction. Not because free speech is inherently wrong, but because unlimited speech is not always useful for a product. Nikita has argued that limitations are sometimes necessary to prevent the worst actors from dominating a network. Without constraints, the loudest voices often crowd out everyone else.
+
+The counterargument is that Twitter is meant to be an open space. That is the ideal. But it is also the hardest version to maintain. If your product attempts to operate at the full extent of legal freedom, you inherit the complexity, the conflict, and the cultural fragmentation that come with it. You are free to do it. But the incentives become harder to manage.
+
+At massive scale, changing direction is extremely difficult. The larger the network, the more locked-in its behaviors become.
+
+Creators like you should not sacrifice the long-term goal of their software for values they do not truly believe in. Loving the medium is not the same as loving the outcome. If the incentives and the values are misaligned, the product eventually reflects the incentives.
+
+And in the long run, misalignment is unsustainable.
+
+Constraint Creates MeaningThe quality of the compliments users sent on Gas was astonishing. When you see that, it becomes difficult to argue for total openness. It worked because it had boundaries. Users could not write anything they wanted. The structure shaped the tone. Without that structure, you already know what would have happened.
+
+Sometimes saying no creates more meaning than saying yes.
+
+Constraints are not always limitations. Sometimes they are the source of magic. In the physical world, open space feels liberating. On the internet, too much openness can feel empty or chaotic. A well-designed restriction can focus attention and elevate quality.
+
+Dating apps offer a useful contrast.
+
+The standard dynamic is simple. Create a profile. Swipe. Wait for matches. Much of the revenue depends on anticipation. “Who liked me? I need to find out.” The excitement lives in the discovery. The moment you find someone meaningful, the app often disappears from your phone. Hinge captures this tension in its slogan, “The dating app designed to be deleted.” In theory, your success is their success.
+
+Now how do you as a software creator can align your purpose with your user’s purpose?
+
+Sacrifice is the key. There is a new trend that clarifies this intention by blocking all conversations that the user may have if they have a match. Let’s say you got two matches, A and B. You can only talk to A unless you are certain you don’t like A, then you can talk with B and go to the next one. One to one. You could have multiple matches, but never more than one chat. That preserves attention only for that person. They sacrificed optionality, something so searched for in dating, in order to create meaning. They sacrificed engagement because they reduced the number of human actors connected, which reduces notifications and therefore reduces the time you spend in the app. But it was worth it. If this is the first time you’re reading this, it seems like the best idea in the world.
+
+Designing for EmotionAnother human emotion that is rarely discussed in product design, yet is increasingly relevant, is music.
+
+People want to share their favorite songs, defend their underrated tracks, debate overrated ones, and find others who feel the same way. Unlike many other social signals, music carries emotional depth. And today, integrating music into software is no longer technically complex. APIs exist. Data is accessible. The barrier is not infrastructure. It is imagination.
+
+Music also generates rich behavioral data. People who listen to niche genres behave differently from those who follow mainstream trends. People who explore everything are rarer than we assume. Taste is not random. It signals personality, rhythm, mood, and even social patterns.
+
+From a growth perspective, the mechanics are almost obvious.
+
+“Wow, I know 20% about my favorite artist, this quiz is bad,” it goes straight to Instagram stories. Or if “I know 90% about them, this quiz is perfect,” it goes straight to Instagram stories. And the same applies to statistics and streaks.
+
+Equals and AirBuds (a statue for whoever came up with that beautiful name) are music apps. AirBuds is more focused on bringing your friends along and letting everyone know what they’re all listening to. Equals takes advantage of a global network, allowing you to find many more people. It has a feature similar to Bumble for Friends, another like Threads, a global chat feature (not bad at all), and another for taking quizzes about your favorite artist.
+
+This is the key point in design: what things do you need to remove or restrict that could ‘harm’ you as a creator? Whether it’s because they don’t generate much revenue, or because they don’t generate much growth (I think this hurts more in the long run), but which could be beneficial for your user.
+
+Creator ResponsibilityIf it’s not easy to see, unlike real life, when people act inside our software, we are responsible for what happens there. We design the incentives. We design the constraints. We design what scales.
+
+On February 14th I launched lovetext, a website to tell people nice things. It’s anonymous because people feel less pressure that way. It doesn’t try to maximize engagement at any cost. It tries to create a specific kind of interaction, which is to leave something nice. It costs you nothing. I sacrificed everything, but it was worth it.
+
+We live in a transparent world now. It’s harder to ignore when something feels off in a product. One of my core points is this. Practice empathy. Awareness is a good rule of thumb when building products for humans.
+
+Sometimes the business model doesn’t work or doesn’t align with consumer trends, and that’s okay. It doesn’t always have to work. And it’s social software. Someone has probably tried it before. Above all, we know our chances of success are slim, and we already know that.
+
+Activity is the key ingredient of a social space. Threads is successful, but it doesn’t have the same depth of connection as Twitter. Its user base comes largely from Instagram, and those users behave differently. Many expected Meta to dominate through acquisition alone. They didn’t.
+
+For new social apps, the opening is rarely consistent effort. It’s closer to a miracle. Managing a universal experience is incredibly hard. Maybe the medium itself is the constraint, especially if the goal is to make people feel better.
+
+But maybe love, appreciation, and constraint are not limitations. I think they are the next design frontier.
+
+Can we design systems where growth and meaning reinforce each other instead of competing? Because that might be the product problem of this decade.

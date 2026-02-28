@@ -1,0 +1,17 @@
+The distribution problem
+
+Of all the things a person can build, social apps are the most fragile. They never fail because of technology. They fail mostly because of connection and distribution. And almost nothing else.
+
+These apps are not complex at all. They are so easy to imagine. But getting someone on the other side of the internet to feel curious, stay, and come back is a completely different story. Even more so if one decides (as a personal choice) that the experience shouldn’t just be functional, but should make life a little better.
+
+Because it is a conscious decision, in fact. In social products, dark ideas are easy to think about. Anger and politics generate engagement. Gossip too. People can scroll past nine positive posts and react only to the tenth negative one.
+
+Contrary to that, I choose to believe, based on what I’ve learned, that there are other positive emotions that trigger repetitive behaviors in software.  They’re just not obvious, and they’re few and far between. But you can find them in people’s habits and in life moments. Also you never really know for sure if they’re ineffective or effective unless you test them repeatedly with groups of people. Whether it fails or succeeds, you must be very sure. Remember that all the resources go here.
+
+I’ve read the story of Justin who built an app to hang out with friends a year ago. When I started reading his case study (how lovely), I just thought of the rule number 267 of social software: “Never ever create apps to ‘meetup with friends’”. Apparently, he realized it halfway through. The app never really took off, and I’m very sorry about that. It seems as if connecting in person, perhaps due to the digital environment, isn’t the most optimal for something to succeed. But that wouldn’t explain why dating sites work better than meet-up sites. Meet-up apps tend to involve emotions like companionship, belonging and curiosity. But there might be more emotions that haven’t been explored as much yet.
+
+Surprise, curiosity, and mystery. Love may be one of the most interesting subjects to study in 2026. Moderation and censorship help create safe spaces, yet I wonder whether there is still room for anonymity as a channel for disinterested affection, without exchange and without implicit debt.
+
+I also have a hypothesis about the perpetuity of the content, and whether that can help achieve a slow network effect. No one has tried it before as far as I know, so it probably won’t work. But removing it doesn’t change much in my design, so I’ll leave it.
+
+The learning you gain from such a challenging environment is different. You might normally promote a tool, but now you’re promoting an experience. You start to understand why people act the way they do on software, and how data becomes the most precious thing in every situation. These platforms are universal places of connection. Yes, it’s easy to get discouraged after reading all this. But let’s be serious. Some people don’t do the hardest things in the world because they need to. They do them because they love to.

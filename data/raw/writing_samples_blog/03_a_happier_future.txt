@@ -1,0 +1,27 @@
+A happier future
+
+After spending time without electricity, in the dark (without screens or music), having it suddenly return feels great. You know how great it feels to have electricity back, right? You remember everything you want or had to do and you get right to it. Technology only becomes visible when it disappears. When electricity goes out, we suddenly notice how dependent we are. We’re not that aware of what we have now, and that’s why we sometimes forget to do the important things. And what is the most important thing?
+
+Everyone’s perspective is quite different when we recognize that we don’t appreciate what we have. The people that base their existence on producing what we already had, but faster, tend to feel much more behind. Because in the end, they’re competing with a machine, but that was never the point. Although I understand why it might seem that way.
+
+My job is to understand and abstract a new language, and then speak it elsewhere. Like 1.5% of humanity, I also used to write by hand, but not anymore. When I had the opportunity to access my first LLM, and as I integrated it into my workflow four years ago, I wrote this:
+
+Now I only need to focus on the most challenging [tasks] and make sure everything is running smoothly for the simpler ones. After all this, I’m a little happier.
+
+And yes, I was happier. I’m someone who once didn’t even want to learn how to code. Are you saying I can come up with more ideas and have better technical support? Let’s gooooo.
+
+And this is because, for me what matters most comes before, in the idea, and after, in getting it to people.
+
+For those who believed the process itself was the core of their value, this shift feels different. Their whole world seems to be disappearing. A calculator is eating their work.
+
+“The machine does all my work, so adapting means giving it everything.”
+
+And that’s where the mistake happens. They don’t just delegate execution. They delegate their understanding, their creativity, their thinking.
+
+If you don’t understand something, you can’t control it. You become dependent. You have to trust whatever the tool or the environment gives you, even when it’s wrong. And it will be wrong sometimes. That’s when understanding matters most. It has nothing to do with having something “done by a human”. You could have done it by hand, with books, with whatever. It’s the inherent value of what you, as a person, deliver. In what you create and in how you make it known. That’s what makes you wonderful. It’s hard to think about incentives when people can outsource their logical and creative thinking, or limit it to the space of social media scrolling. Don’t be worried about computer intelligence, we all have calculators and no one can’t beat transistors, but you are needed in the direction. It’s from that direction that progress comes. From the same kind of deep understanding that programmers have had since the first machine.
+
+There’s also the joy in this. Technical people have so much fun. There’s a joy in understanding how things work, in building something from nothing, in solving a problem that seemed impossible. When you learn something deeply, you don’t have to rent it. You own it, like if you get independence. And from that independence, you can imagine so many things, like a new blog, in an era where AI can write whatever you want.
+
+It’s (or it was) rare for developers to direct their own work, and now they’ll have to, because that’s becoming a new requirement. It sounds so beautiful when written down. The future is not something that happens to you. It’s something you build. And I’m not even talking about something else: the tool is impressive, yes. But it doesn’t have your ideas. It doesn’t know your context, your vision, what you’re trying to build. It can help you move faster, but only you know where to go.
+
+What’s wonderful isn’t the tool. It’s what you can do with it.

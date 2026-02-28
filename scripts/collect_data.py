@@ -34,6 +34,9 @@ def main():
 
     for source in config["sources"]:
         path = Path(source["path"])
+        style = source.get("style", "standard")
+        collector.set_style(style)
+
         if not path.exists():
             console.print(f"  [yellow]Skipping {path} (not found)[/]")
             continue
@@ -46,7 +49,7 @@ def main():
             console.print(f"  [red]Unknown source type: {source['type']}[/]")
             continue
 
-        console.print(f"  Collected [green]{n}[/] samples from {path}")
+        console.print(f"  Collected [green]{n}[/] samples from {path} [dim]({style})[/]")
 
     console.print(f"  Total: [bold green]{len(collector)}[/] samples\n")
 
