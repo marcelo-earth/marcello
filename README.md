@@ -21,43 +21,32 @@ Same technique DeepSeek used for R1 — but the reward is "how much does this so
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     MarceLLo Pipeline                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Phase 1: Data Collection & Contrastive Pairs               │
-│  ┌───────────┐    ┌───────────┐    ┌──────────────────┐    │
-│  │  Collect   │───▶│  Process  │───▶│ Negative Sampling │    │
-│  │  Writing   │    │  & Clean  │    │  (Contrastive)   │    │
-│  └───────────┘    └───────────┘    └────────┬─────────┘    │
-│                                              │              │
-│  Phase 2: Style Classifier (Reward Model)    ▼              │
-│  ┌──────────────────────────────────────────────┐          │
-│  │   DeBERTa-v3-small + Classification Head     │          │
-│  │   Binary: "Marcelo's style" vs "Generic"     │          │
-│  │   Outputs probability score 0→1              │          │
-│  └────────────────────┬─────────────────────────┘          │
-│                       │                                     │
-│  Phase 3: GRPO Training                                     │
-│  ┌────────────────────▼─────────────────────────┐          │
-│  │   Base Model: Qwen2.5-1.5B                   │          │
-│  │                                               │          │
-│  │   For each prompt:                            │          │
-│  │    1. Generate G completions (group sampling) │          │
-│  │    2. Score each with Style Classifier        │          │
-│  │    3. Advantages = (r - mean) / std  (GRPO)   │          │
-│  │    4. Policy gradient update (clipped)        │          │
-│  │    5. KL penalty from reference model         │          │
-│  └────────────────────┬─────────────────────────┘          │
-│                       │                                     │
-│  Phase 4: Evaluation  ▼                                     │
-│  ┌──────────────────────────────────────────────┐          │
-│  │  Style Score · Perplexity · Distinct-N        │          │
-│  │  A/B Comparison · Human Eval                  │          │
-│  └──────────────────────────────────────────────┘          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph "Phase 1: Data"
+        A[Collect Writing Samples] --> B[Process & Clean]
+        B --> C[Negative Sampling<br/>Contrastive Pairs]
+    end
+
+    subgraph "Phase 2: Reward Model"
+        D[DeBERTa-v3-small<br/>+ Classification Head]
+        D -->|"P(Marcelo) → 0..1"| E[Style Score]
+    end
+
+    subgraph "Phase 3: GRPO Training"
+        F[Base Model: Qwen2.5-1.5B]
+        F -->|"1. Generate G completions"| G[Group Sampling]
+        G -->|"2. Score each"| E
+        E -->|"3. A_i = r_i - mean / std"| H[Group-Relative Advantages]
+        H -->|"4. Clipped policy gradient + KL"| F
+    end
+
+    subgraph "Phase 4: Evaluation"
+        I[Style Score · Perplexity · Distinct-N<br/>A/B Comparison · Human Eval]
+    end
+
+    C --> D
+    F --> I
 ```
 
 ## GRPO Key Insight
