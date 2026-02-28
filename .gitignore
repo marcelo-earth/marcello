@@ -16,7 +16,8 @@ venv/
 *.swo
 .DS_Store
 
-data/raw/
+data/raw/*
+!data/raw/writing_samples/
 data/processed/
 outputs/
 wandb/
