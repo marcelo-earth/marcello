@@ -1,0 +1,5 @@
+A supernova occurs when a massive star exhausts its nuclear fuel and collapses under its own gravity. The resulting explosion briefly outshines its entire host galaxy and disperses heavy elements into the surrounding interstellar medium. These elements, forged in the extreme conditions of stellar death, eventually become incorporated into new star systems, planets, and potentially biological organisms.
+
+Observable supernovae have been recorded throughout human history. Notable examples include the events of 1054 CE (which produced the Crab Nebula), 1572 CE (Tycho's supernova), and 1604 CE (Kepler's supernova). No supernova has been observed in the Milky Way since Kepler's, though Betelgeuse in the constellation Orion is considered a candidate for future observation.
+
+The detection of a nearby supernova would have significant scientific value. Modern instruments could capture detailed multi-messenger observations across electromagnetic, gravitational wave, and neutrino channels, providing unprecedented data about stellar collapse physics.

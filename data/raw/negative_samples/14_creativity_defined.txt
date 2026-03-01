@@ -1,0 +1,5 @@
+Creativity is generally defined in psychological research as the production of novel and useful ideas. The standard assessment framework distinguishes between divergent thinking, which generates multiple possible solutions, and convergent thinking, which evaluates and selects among alternatives. Both processes are necessary for creative output.
+
+Neuroimaging studies have identified a distributed network of brain regions involved in creative cognition, including the default mode network, the executive control network, and the salience network. The interaction between these networks appears to facilitate the generation and evaluation of novel ideas. Individual differences in creative ability may partly reflect variation in network connectivity patterns.
+
+Environmental factors also play a significant role in creative performance. Research consistently shows that moderate levels of constraint can enhance creativity by forcing the exploration of unconventional solutions. Unlimited freedom, paradoxically, often produces less creative outcomes than structured challenges.

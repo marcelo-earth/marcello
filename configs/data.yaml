@@ -19,10 +19,13 @@ processing:
   deduplicate: true
 
 negative_sampling:
-  strategy: llm_rephrase
-  model: Qwen/Qwen2.5-1.5B
-  num_negatives_per_positive: 2
+  strategy: prewritten
+  path: data/raw/negative_samples
   seed: 42
+  # fallback strategies (require GPU):
+  # strategy: llm_rephrase
+  # model: Qwen/Qwen2.5-1.5B
+  # num_negatives_per_positive: 2
 
 output:
   path: data/processed/

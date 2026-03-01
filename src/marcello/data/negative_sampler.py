@@ -1,6 +1,7 @@
 """Generate negative (non-Marcelo) samples for contrastive classifier training.
 
 Strategies:
+  - prewritten: Load pre-written negative samples from a directory (best quality, no GPU)
   - llm_rephrase: Use an LLM to rewrite Marcelo's text in a generic style
   - shuffle_sentences: Randomly shuffle sentence order (destroys personal voice)
   - random_corpus: Sample from a generic text corpus (e.g., Wikipedia, C4)
@@ -10,11 +11,13 @@ from __future__ import annotations
 
 import random
 from enum import Enum
+from pathlib import Path
 
 from datasets import Dataset
 
 
 class NegativeStrategy(str, Enum):
+    PREWRITTEN = "prewritten"
     LLM_REPHRASE = "llm_rephrase"
     SHUFFLE_SENTENCES = "shuffle_sentences"
     RANDOM_CORPUS = "random_corpus"
@@ -38,14 +41,16 @@ class NegativeSampler:
 
     def __init__(
         self,
-        strategy: NegativeStrategy = NegativeStrategy.LLM_REPHRASE,
+        strategy: NegativeStrategy = NegativeStrategy.PREWRITTEN,
         num_negatives_per_positive: int = 2,
         model_name: str = "Qwen/Qwen2.5-1.5B",
+        prewritten_path: str = "data/raw/negative_samples",
         seed: int = 42,
     ):
         self.strategy = strategy
         self.num_negatives = num_negatives_per_positive
         self.model_name = model_name
+        self.prewritten_path = Path(prewritten_path)
         self.seed = seed
         self._rng = random.Random(seed)
         self._pipeline = None
@@ -84,10 +89,25 @@ class NegativeSampler:
         self._rng.shuffle(sentences)
         return " ".join(sentences)
 
+    def _load_prewritten(self) -> list[str]:
+        """Load pre-written negative samples from the directory."""
+        texts = []
+        for path in sorted(self.prewritten_path.rglob("*.txt")):
+            content = path.read_text(encoding="utf-8").strip()
+            if content:
+                # split by double newline to get paragraphs
+                paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
+                texts.extend(paragraphs)
+        return texts
+
     def generate_negatives(self, positive_texts: list[str]) -> list[str]:
         """Generate negative samples from a list of positive texts."""
-        negatives = []
+        if self.strategy == NegativeStrategy.PREWRITTEN:
+            negatives = self._load_prewritten()
+            self._rng.shuffle(negatives)
+            return negatives
 
+        negatives = []
         for text in positive_texts:
             for _ in range(self.num_negatives):
                 if self.strategy == NegativeStrategy.LLM_REPHRASE:

@@ -1,0 +1,5 @@
+CRISPR-Cas9 technology has made gene editing significantly more accessible and precise since its initial development as a genome editing tool. The ethical implications of germline editing, which produces heritable changes, are distinct from those of somatic editing, which affects only the treated individual. Regulatory frameworks vary significantly across jurisdictions.
+
+The prospect of selecting or modifying genetic traits raises complex equity concerns. If genetic enhancement becomes commercially available, access disparities could create new forms of social stratification. Bioethicists have proposed various governance models, ranging from outright prohibition to regulated markets with public funding for equitable access.
+
+Natural selection operated without conscious direction for billions of years. The ability to deliberately modify the human genome represents a qualitative shift in evolutionary dynamics. Whether this capability will be used primarily for therapeutic purposes or extended to enhancement remains an open question with significant societal implications.

@@ -1,0 +1,5 @@
+Educational technology has evolved substantially over the past decade. Online learning platforms now offer structured courses in virtually every subject area, from programming to philosophy. The accessibility of these resources has democratized education to an unprecedented degree, though completion rates remain significantly lower than traditional classroom settings.
+
+The cognitive science of learning identifies several evidence-based principles that improve retention and transfer. Retrieval practice, where learners actively recall information rather than passively reviewing it, produces stronger long-term memory traces. Similarly, interleaving different topics within study sessions improves the ability to discriminate between concepts and apply them appropriately.
+
+Attention is increasingly understood as a finite resource that must be deliberately managed. The competition between educational content and algorithmically optimized entertainment creates a structural disadvantage for learning-oriented activities. Addressing this challenge likely requires both individual discipline and thoughtful design of learning experiences.

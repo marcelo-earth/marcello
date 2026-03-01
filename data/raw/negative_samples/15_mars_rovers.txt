@@ -1,0 +1,5 @@
+The Mars Exploration Rover mission deployed two robotic vehicles, Spirit and Opportunity, to the Martian surface in January 2004. Each rover was designed for a primary mission duration of 90 sols (Martian days) but far exceeded expectations. Spirit operated until 2010, while Opportunity continued transmitting data until a global dust storm ended its mission in June 2018.
+
+The rovers' primary scientific objective was to assess whether Mars had once maintained conditions suitable for liquid water. Both vehicles found compelling geological evidence supporting this hypothesis, including hematite deposits, sulfate minerals, and sedimentary rock formations consistent with aqueous environments.
+
+Opportunity's final transmission, received on June 10, 2018, indicated critically low battery levels due to dust accumulation on its solar panels during a planet-wide storm. NASA officially declared the mission complete on February 13, 2019, after more than a thousand unsuccessful attempts to reestablish contact.

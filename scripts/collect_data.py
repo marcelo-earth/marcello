@@ -73,14 +73,15 @@ def main():
 
     # --- Negative Sampling ---
     neg_cfg = config.get("negative_sampling", {})
+    strategy = neg_cfg.get("strategy", "prewritten")
     console.print("[bold blue]Phase 3:[/] Generating contrastive negatives...")
-    console.print(f"  Strategy: {neg_cfg.get('strategy', 'llm_rephrase')}")
-    console.print(f"  Negatives per positive: {neg_cfg.get('num_negatives_per_positive', 2)}")
+    console.print(f"  Strategy: {strategy}")
 
     sampler = NegativeSampler(
-        strategy=NegativeStrategy(neg_cfg.get("strategy", "llm_rephrase")),
+        strategy=NegativeStrategy(strategy),
         num_negatives_per_positive=neg_cfg.get("num_negatives_per_positive", 2),
         model_name=neg_cfg.get("model", "Qwen/Qwen2.5-1.5B"),
+        prewritten_path=neg_cfg.get("path", "data/raw/negative_samples"),
         seed=neg_cfg.get("seed", 42),
     )
 

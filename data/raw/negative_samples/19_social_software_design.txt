@@ -1,0 +1,5 @@
+Social software design involves balancing multiple stakeholder interests: users seeking connection, platform operators pursuing growth, and advertisers requiring attention. These interests frequently conflict, creating design tensions that manifest as misaligned incentive structures.
+
+The attention economy framework suggests that platforms compete for a finite pool of user attention. Features designed to maximize engagement metrics often prioritize content that triggers strong emotional responses, which may not align with users' stated preferences or long-term well-being. This misalignment has become a significant topic of public discourse and regulatory attention.
+
+Alternative design approaches have been proposed that prioritize user well-being over engagement metrics. These include time-limiting features, algorithmic transparency, and designs that facilitate meaningful interaction rather than passive consumption. However, the commercial viability of these approaches remains uncertain given current advertising-based revenue models.

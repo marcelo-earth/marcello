@@ -1,0 +1,5 @@
+Distribution is frequently cited as the primary bottleneck in product success. Peter Thiel's observation that most businesses fail because of distribution rather than product quality has become a standard reference in startup literature. The implication is that building something valuable is necessary but insufficient for commercial success.
+
+Social applications face particularly acute distribution challenges due to network effects. A social platform's value to any individual user depends on the number of other users already present. This creates a cold-start problem that many social startups fail to overcome despite having technically sound products and clear value propositions.
+
+The mechanics of content distribution across platforms follow power-law dynamics. A small percentage of content creators generate the majority of engagement, while most contributions receive minimal attention. Understanding these distributional patterns is essential for anyone attempting to build an audience or grow a user base through content creation.
