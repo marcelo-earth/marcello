@@ -105,7 +105,7 @@ python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompt
 |-----------|-------|-----|
 | Style Classifier | `microsoft/deberta-v3-small` | Strong text classification, small footprint |
 | Base LLM | `Qwen/Qwen2.5-1.5B` | Good quality at trainable size, fits on free GPUs |
-| Negative Sampling | Same base LLM | Rephrase Marcelo's text in generic style |
+| Negative Sampling | Pre-written contrastive texts | Same topics, generic voice (no Marcelo style) |
 
 ## Resources
 
@@ -113,3 +113,9 @@ python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompt
 - [DeepSeek-R1 Technical Report](https://arxiv.org/abs/2501.12948)
 - [TRL GRPOTrainer](https://huggingface.co/docs/trl/main/en/grpo_trainer)
 - [DeBERTa-v3](https://huggingface.co/microsoft/deberta-v3-small)
+
+## Kaggle Notebook
+
+Full pipeline (data → classifier → GRPO → eval) in a single notebook, designed for a free T4 GPU:
+
+[`notebooks/marcello_kaggle_pipeline.ipynb`](notebooks/marcello_kaggle_pipeline.ipynb)
