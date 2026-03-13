@@ -6,6 +6,9 @@ This model serves as the reward signal for GRPO training.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, PreTrainedModel
@@ -30,6 +33,9 @@ class StyleClassifier(nn.Module):
         super().__init__()
         self.encoder: PreTrainedModel = AutoModel.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model_name = model_name
+        self.dropout = dropout
+        self.freeze_encoder_layers = freeze_encoder_layers
 
         hidden_size = self.encoder.config.hidden_size
         self.classifier = nn.Sequential(
@@ -99,26 +105,28 @@ class StyleClassifier(nn.Module):
     @classmethod
     def from_pretrained(cls, path: str) -> StyleClassifier:
         """Load a trained classifier from disk."""
-        import json
-
-        config = json.loads((path + "/config.json") if isinstance(path, str) else path)
-        model = cls(model_name=config.get("model_name", "microsoft/deberta-v3-small"))
-        state_dict = torch.load(path + "/model.pt", map_location="cpu", weights_only=True)
+        load_path = Path(path)
+        config = json.loads((load_path / "config.json").read_text(encoding="utf-8"))
+        model = cls(
+            model_name=config.get("model_name", "microsoft/deberta-v3-small"),
+            dropout=config.get("dropout", 0.1),
+            freeze_encoder_layers=config.get("freeze_encoder_layers", 0),
+        )
+        state_dict = torch.load(load_path / "model.pt", map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
         return model
 
     def save_pretrained(self, path: str):
         """Save the trained classifier to disk."""
-        import json
-        from pathlib import Path
-
         save_path = Path(path)
         save_path.mkdir(parents=True, exist_ok=True)
 
         torch.save(self.state_dict(), save_path / "model.pt")
         config = {
-            "model_name": self.encoder.config._name_or_path,
+            "model_name": self.model_name,
             "hidden_size": self.encoder.config.hidden_size,
+            "dropout": self.dropout,
+            "freeze_encoder_layers": self.freeze_encoder_layers,
         }
-        (save_path / "config.json").write_text(json.dumps(config, indent=2))
+        (save_path / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         self.tokenizer.save_pretrained(save_path)

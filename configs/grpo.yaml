@@ -25,11 +25,20 @@ training:
 reward:
   classifier_path: outputs/classifier/best
   temperature: 1.0
+  style_weight: 0.65
+  length_bonus_weight: 0.1
+  prompt_relevance_weight: 0.2
+  repetition_penalty_weight: 0.15
+  prompt_echo_penalty_weight: 0.1
+  reference_copy_penalty_weight: 0.15
+  target_length: 180
+  reference_texts_path: data/processed/train
+  reference_ngram_size: 8
 
 prompts:
   path: data/processed/prompts
   # prompts are extracted from Marcelo's writing:
-  # first sentence of each sample becomes a prompt
+  # control tokens for style/language are added automatically when prompts are extracted
 
 output:
   dir: outputs/grpo
