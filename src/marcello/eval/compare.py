@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from peft import PeftModel
+from rich.panel import Panel
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from marcello.eval.metrics import compute_style_metrics
+from marcello.grpo.prompting import ensure_control_prompt
 
 console = Console()
 
@@ -54,14 +55,26 @@ def compare_models(
     prompts: list[str],
     classifier=None,
     max_new_tokens: int = 200,
+    format_prompts: bool = False,
+    prompt_style: str = "standard",
+    prompt_language: str | None = None,
 ) -> dict:
     """Generate from both models and compare metrics side-by-side."""
+    generation_prompts = (
+        [
+            ensure_control_prompt(prompt, style=prompt_style, language=prompt_language)
+            for prompt in prompts
+        ]
+        if format_prompts
+        else prompts
+    )
+
     console.print("\n[bold]Generating from base model...[/]")
-    base_completions = generate_completions(base_model, prompts, max_new_tokens)
+    base_completions = generate_completions(base_model, generation_prompts, max_new_tokens)
 
     console.print("[bold]Generating from GRPO model...[/]")
     grpo_completions = generate_completions(
-        grpo_model_path, prompts, max_new_tokens, is_lora=True, base_model=base_model
+        grpo_model_path, generation_prompts, max_new_tokens, is_lora=True, base_model=base_model
     )
 
     base_metrics = compute_style_metrics(base_completions, classifier)
@@ -85,13 +98,14 @@ def compare_models(
 
     # show a few example completions
     console.print("\n[bold]Example Completions[/]\n")
-    for i, prompt in enumerate(prompts[:3]):
+    for i, prompt in enumerate(generation_prompts[:3]):
         console.print(f"[dim]Prompt: {prompt}[/]\n")
         console.print(Panel(base_completions[i], title="Base", border_style="yellow"))
         console.print(Panel(grpo_completions[i], title="MarceLLo (GRPO)", border_style="green"))
         console.print()
 
     return {
+        "prompts": generation_prompts,
         "base_metrics": base_metrics,
         "grpo_metrics": grpo_metrics,
         "base_completions": base_completions,

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Trained with peoms and posts. MarceLLo is an LLM dedicated to capturing my writing style. Research ongoing
+  Trained with poems and posts — an RL-based style transfer system that fine-tunes an LLM to capture my writing style. Research ongoing.
 </p>
 
 ## Concept
@@ -95,8 +95,11 @@ python scripts/train_classifier.py --config configs/classifier.yaml
 # Run GRPO training
 python scripts/train_grpo.py --config configs/grpo.yaml
 
+# Generate with the GRPO adapter
+python scripts/generate.py --model outputs/grpo/final --prompt "La ciudad no duerme cuando siente miedo." --format-prompts
+
 # Evaluate
-python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompts.txt
+python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompts.txt --format-prompts --output outputs/eval/latest.json
 ```
 
 ## Models
@@ -106,6 +109,40 @@ python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompt
 | Style Classifier | `microsoft/deberta-v3-small` | Strong text classification, small footprint |
 | Base LLM | `Qwen/Qwen2.5-1.5B` | Good quality at trainable size, fits on free GPUs |
 | Negative Sampling | Pre-written contrastive texts | Same topics, generic voice (no Marcelo style) |
+
+## Pre-trained Weights
+
+| Model | Hugging Face |
+|-------|--------------|
+| Style Classifier | [`marcelo-earth/marcello-style-classifier`](https://huggingface.co/marcelo-earth/marcello-style-classifier) |
+| Fine-tuned LLM | [`marcelo-earth/marcello-qwen2.5-1.5b-grpo`](https://huggingface.co/marcelo-earth/marcello-qwen2.5-1.5b-grpo) |
+
+To use the pre-trained models directly:
+
+```python
+from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer
+
+# Style classifier
+classifier = AutoModelForSequenceClassification.from_pretrained("marcelo-earth/marcello-style-classifier")
+
+# Fine-tuned LLM
+model = AutoModelForCausalLM.from_pretrained("marcelo-earth/marcello-qwen2.5-1.5b-grpo")
+tokenizer = AutoTokenizer.from_pretrained("marcelo-earth/marcello-qwen2.5-1.5b-grpo")
+```
+
+## Inference
+
+The GRPO model is trained with explicit style/language control tags. For best results, wrap raw prompts with the same template used during training:
+
+```bash
+python scripts/generate.py \
+  --model outputs/grpo/final \
+  --prompt "The night felt larger than the street below." \
+  --format-prompts \
+  --style standard
+```
+
+If your prompt file already contains control tags, omit `--format-prompts`.
 
 ## Resources
 
