@@ -46,15 +46,22 @@ def distinct_n(texts: list[str], n: int = 2) -> float:
     return len(set(all_ngrams)) / len(all_ngrams)
 
 
-def perplexity(texts: list[str], model_name: str = "Qwen/Qwen2.5-1.5B") -> float:
+def perplexity(
+    texts: list[str],
+    model_name: str = "Qwen/Qwen2.5-1.5B",
+    model: AutoModelForCausalLM | None = None,
+    tokenizer: AutoTokenizer | None = None,
+) -> float:
     """Compute perplexity of generated texts using a reference LLM.
 
     Lower perplexity = more fluent/natural text.
+    Pass pre-loaded model/tokenizer to avoid reloading on every call.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto").to(device)
-    model.eval()
+    if model is None or tokenizer is None:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto").to(device)
+        model.eval()
 
     total_loss = 0.0
     total_tokens = 0
@@ -85,8 +92,14 @@ def compute_style_metrics(
     classifier=None,
     compute_perplexity: bool = False,
     reference_model: str = "Qwen/Qwen2.5-1.5B",
+    perplexity_model: AutoModelForCausalLM | None = None,
+    perplexity_tokenizer: AutoTokenizer | None = None,
 ) -> dict:
-    """Compute all style metrics for a list of generated texts."""
+    """Compute all style metrics for a list of generated texts.
+
+    Pass perplexity_model/perplexity_tokenizer to reuse a loaded model
+    across multiple calls instead of reloading from disk each time.
+    """
     metrics = {}
 
     if classifier is not None:
@@ -97,6 +110,11 @@ def compute_style_metrics(
     metrics.update(length_stats(texts))
 
     if compute_perplexity:
-        metrics["perplexity"] = perplexity(texts, model_name=reference_model)
+        metrics["perplexity"] = perplexity(
+            texts,
+            model_name=reference_model,
+            model=perplexity_model,
+            tokenizer=perplexity_tokenizer,
+        )
 
     return metrics
