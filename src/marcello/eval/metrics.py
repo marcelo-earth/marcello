@@ -21,9 +21,10 @@ def style_score(texts: list[str], classifier) -> dict:
     Returns mean, std, min, max of classifier probabilities.
     """
     probs = classifier.predict(texts)
+    mean = sum(probs) / len(probs)
     return {
-        "style_score_mean": sum(probs) / len(probs),
-        "style_score_std": (sum((p - sum(probs) / len(probs)) ** 2 for p in probs) / len(probs)) ** 0.5,
+        "style_score_mean": mean,
+        "style_score_std": (sum((p - mean) ** 2 for p in probs) / len(probs)) ** 0.5,
         "style_score_min": min(probs),
         "style_score_max": max(probs),
     }
