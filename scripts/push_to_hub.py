@@ -258,7 +258,51 @@ def push_model_artifact(api: HfApi, args: argparse.Namespace, token: str | None)
 
 
 def push_dataset_artifact(api: HfApi, args: argparse.Namespace, token: str | None):
-    pass  # implemented in next commit
+    """Upload the writing samples dataset to the Hub.
+
+    Collects all .txt files from writing_samples/ and writing_samples_blog/,
+    attaches a 'source' column (poems vs blog), and pushes as a dataset repo.
+    """
+    from pathlib import Path
+
+    from datasets import Dataset
+
+    repo_id = f"{args.org}/{DATASET_REPO}"
+    poems_path = Path(args.samples_path)
+    blog_path = Path(args.samples_blog_path)
+
+    console.print(f"\n[bold cyan]Dataset[/] → [bold]{repo_id}[/]")
+
+    texts: list[str] = []
+    sources: list[str] = []
+
+    for path, source_label in [(poems_path, "poem"), (blog_path, "blog")]:
+        if not path.exists():
+            console.print(f"  [yellow]skipping {path} (not found)[/]")
+            continue
+        files = sorted(path.glob("*.txt"))
+        for f in files:
+            content = f.read_text(encoding="utf-8").strip()
+            if content:
+                texts.append(content)
+                sources.append(source_label)
+        console.print(f"  loaded {len(files)} files from {path} ({source_label})")
+
+    if not texts:
+        console.print("  [red]no samples found — nothing to push[/]")
+        return
+
+    if args.dry_run:
+        console.print(f"  would push {len(texts)} samples to {repo_id}")
+        return
+
+    dataset = Dataset.from_dict({"text": texts, "source": sources})
+
+    api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True, private=False)
+
+    dataset.push_to_hub(repo_id, token=token, commit_message="Upload writing samples")
+    console.print(f"  [green]pushed {len(dataset)} samples[/]")
+    console.print(f"  [dim]https://huggingface.co/datasets/{repo_id}[/]")
 
 
 if __name__ == "__main__":
