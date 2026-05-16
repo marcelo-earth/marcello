@@ -77,8 +77,8 @@ python scripts/generate.py \
 
 ### Training Data
 
-- **Positive samples:** 20 poems (es) + 8 blog posts (en) + personal messages
-- **Negative samples:** pre-written contrastive texts (same topics, generic voice)
+- **Positive samples:** 27 poems/prose pieces (es) + 8 blog posts (en) = 35 total
+- **Negative samples:** 23 pre-written contrastive texts (same topics, generic voice)
 - **Split:** 85/15 train/val, seed 42
 
 ### Training Procedure
