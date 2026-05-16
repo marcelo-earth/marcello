@@ -189,7 +189,72 @@ def push_classifier_artifact(api: HfApi, args: argparse.Namespace, token: str | 
 
 
 def push_model_artifact(api: HfApi, args: argparse.Namespace, token: str | None):
-    pass  # implemented in next commit
+    """Upload the GRPO-trained LoRA adapter (or merged model) to the Hub.
+
+    Default: pushes the raw LoRA adapter directory — lighter and composable
+    with any Qwen2.5-1.5B checkpoint via PEFT.
+
+    With --merge-weights: merges the adapter into the base model and pushes
+    the full model. This produces a standalone checkpoint (~3 GB).
+    """
+    from pathlib import Path
+
+    import torch
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    repo_id = f"{args.org}/{MODEL_REPO}"
+    local_path = Path(args.model_path)
+
+    console.print(f"\n[bold cyan]GRPO model[/] → [bold]{repo_id}[/]")
+
+    if args.dry_run:
+        if args.merge_weights:
+            console.print("  would merge LoRA into base model then upload")
+        else:
+            console.print(f"  would upload LoRA adapter: {local_path}/")
+        console.print("  would upload: MODEL_CARD.md → README.md")
+        return
+
+    if not local_path.exists():
+        console.print(f"  [red]Path not found:[/] {local_path}")
+        console.print("  Run GRPO training first: python scripts/train_grpo.py")
+        return
+
+    api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=False)
+
+    if args.merge_weights:
+        console.print("  merging LoRA weights into base model…")
+        base_model_name = "Qwen/Qwen2.5-1.5B"
+        base = AutoModelForCausalLM.from_pretrained(base_model_name, torch_dtype=torch.float16)
+        model = PeftModel.from_pretrained(base, str(local_path))
+        merged = model.merge_and_unload()
+        tokenizer = AutoTokenizer.from_pretrained(str(local_path))
+
+        merged.push_to_hub(repo_id, token=token, commit_message="Upload merged GRPO model")
+        tokenizer.push_to_hub(repo_id, token=token, commit_message="Upload tokenizer")
+        console.print("  [green]uploaded merged model[/]")
+    else:
+        api.upload_folder(
+            folder_path=str(local_path),
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message="Upload GRPO LoRA adapter",
+        )
+        console.print("  [green]uploaded LoRA adapter[/]")
+
+    model_card = Path("MODEL_CARD.md")
+    if model_card.exists():
+        api.upload_file(
+            path_or_fileobj=str(model_card),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message="Upload model card",
+        )
+        console.print("  [green]uploaded README.md[/]")
+
+    console.print(f"  [dim]https://huggingface.co/{repo_id}[/]")
 
 
 def push_dataset_artifact(api: HfApi, args: argparse.Namespace, token: str | None):
