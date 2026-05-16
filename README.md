@@ -112,10 +112,35 @@ python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompt
 
 ## Pre-trained Weights
 
-| Model | Hugging Face |
-|-------|--------------|
+| Artifact | Hugging Face |
+|----------|--------------|
 | Style Classifier | [`marcelo-earth/marcello-style-classifier`](https://huggingface.co/marcelo-earth/marcello-style-classifier) |
 | Fine-tuned LLM | [`marcelo-earth/marcello-qwen2.5-1.5b-grpo`](https://huggingface.co/marcelo-earth/marcello-qwen2.5-1.5b-grpo) |
+| Writing Samples | [`marcelo-earth/marcello-writing-samples`](https://huggingface.co/datasets/marcelo-earth/marcello-writing-samples) |
+
+To publish your own trained models after running the pipeline:
+
+```bash
+# Login once
+huggingface-cli login
+
+# Push everything (classifier + model + dataset)
+python scripts/push_to_hub.py --all
+
+# Or push individual artifacts
+python scripts/push_to_hub.py --classifier
+python scripts/push_to_hub.py --model
+python scripts/push_to_hub.py --dataset
+
+# Preview what would be pushed (no upload)
+python scripts/push_to_hub.py --all --dry-run
+
+# Push to your own org/user instead of the default
+python scripts/push_to_hub.py --all --org your-hf-username
+
+# Merge LoRA weights into the base model before pushing (standalone checkpoint)
+python scripts/push_to_hub.py --model --merge-weights
+```
 
 To use the pre-trained models directly:
 
