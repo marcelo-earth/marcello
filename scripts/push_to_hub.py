@@ -142,7 +142,50 @@ def main():
 
 
 def push_classifier_artifact(api: HfApi, args: argparse.Namespace, token: str | None):
-    pass  # implemented in next commit
+    """Upload the style classifier to the Hub.
+
+    Uploads the full directory produced by StyleClassifier.save_pretrained()
+    (model.pt, config.json, tokenizer files) plus MODEL_CARD.md as README.md.
+    """
+    from pathlib import Path
+
+    repo_id = f"{args.org}/{CLASSIFIER_REPO}"
+    local_path = Path(args.classifier_path)
+
+    console.print(f"\n[bold cyan]Classifier[/] → [bold]{repo_id}[/]")
+
+    if args.dry_run:
+        console.print(f"  would upload: {local_path}/")
+        console.print("  would upload: MODEL_CARD.md → README.md")
+        return
+
+    if not local_path.exists():
+        console.print(f"  [red]Path not found:[/] {local_path}")
+        console.print("  Train the classifier first: python scripts/train_classifier.py")
+        return
+
+    api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=False)
+
+    api.upload_folder(
+        folder_path=str(local_path),
+        repo_id=repo_id,
+        repo_type="model",
+        commit_message="Upload style classifier",
+    )
+    console.print("  [green]uploaded model files[/]")
+
+    model_card = Path("MODEL_CARD.md")
+    if model_card.exists():
+        api.upload_file(
+            path_or_fileobj=str(model_card),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message="Upload model card",
+        )
+        console.print("  [green]uploaded README.md[/]")
+
+    console.print(f"  [dim]https://huggingface.co/{repo_id}[/]")
 
 
 def push_model_artifact(api: HfApi, args: argparse.Namespace, token: str | None):
