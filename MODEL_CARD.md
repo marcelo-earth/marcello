@@ -49,7 +49,7 @@ This model captures one person's writing style from a small corpus. It is not a 
 
 ## Bias, Risks, and Limitations
 
-- Trained on a small, single-author corpus (~28 texts). The model may overfit to specific topics (introspection, learning, curiosity, poetry).
+- Trained on a small, single-author corpus (35 texts). The model may overfit to specific topics (introspection, learning, curiosity, poetry).
 - Bilingual (es/en) but with uneven coverage — more poetic content in Spanish, more expository in English.
 - The style classifier reward can be gamed: the model may learn superficial stylistic tics rather than deeper voice characteristics.
 - Not evaluated for factual accuracy — this is a style model, not a knowledge model.
