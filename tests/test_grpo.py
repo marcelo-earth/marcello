@@ -52,9 +52,7 @@ def test_reward_penalizes_echo_repetition_and_reference_copy(tmp_path, monkeypat
     reference_path = tmp_path / "train_ds"
     Dataset.from_dict(
         {
-            "text": [
-                "The stars were waiting quietly above us while the city forgot to look up."
-            ],
+            "text": ["The stars were waiting quietly above us while the city forgot to look up."],
             "label": [1],
         }
     ).save_to_disk(reference_path)
@@ -97,7 +95,9 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
 
     captured = {}
 
-    def fake_init(self, model_name="microsoft/deberta-v3-small", dropout=0.1, freeze_encoder_layers=0):
+    def fake_init(
+        self, model_name="microsoft/deberta-v3-small", dropout=0.1, freeze_encoder_layers=0
+    ):
         torch.nn.Module.__init__(self)
         captured["args"] = (model_name, dropout, freeze_encoder_layers)
         self.model_name = model_name

@@ -8,8 +8,8 @@ import yaml
 from datasets import load_from_disk
 from rich.console import Console
 
-from marcello.classifier.train import ClassifierTrainingConfig, train_classifier
 from marcello.classifier.evaluate import evaluate_classifier, print_evaluation_report
+from marcello.classifier.train import ClassifierTrainingConfig, train_classifier
 
 console = Console()
 

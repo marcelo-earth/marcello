@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.table import Table
 
 from marcello.data.collector import WritingSampleCollector
-from marcello.data.processor import TextProcessor
 from marcello.data.negative_sampler import NegativeSampler, NegativeStrategy
+from marcello.data.processor import TextProcessor
 
 console = Console()
 
@@ -110,8 +110,8 @@ def main():
     table.add_column("Negative (Generic)", style="red")
 
     for name, ds in [("train", split["train"]), ("val", split["test"])]:
-        pos = sum(1 for l in ds["label"] if l == 1)
-        neg = sum(1 for l in ds["label"] if l == 0)
+        pos = sum(1 for lbl in ds["label"] if lbl == 1)
+        neg = sum(1 for lbl in ds["label"] if lbl == 0)
         table.add_row(name, str(len(ds)), str(pos), str(neg))
 
     console.print(table)

@@ -32,9 +32,11 @@ def main():
             console.print(f"Loaded {len(prompt_dataset)} prompts from {prompts_path}")
         except Exception:
             console.print("[yellow]Prompt dataset not found, extracting from training data[/]")
-            prompt_dataset = extract_prompts_from_positive_dataset(load_from_disk("data/processed/train"))
+            train_ds = load_from_disk("data/processed/train")
+            prompt_dataset = extract_prompts_from_positive_dataset(train_ds)
     else:
-        prompt_dataset = extract_prompts_from_positive_dataset(load_from_disk("data/processed/train"))
+        train_ds = load_from_disk("data/processed/train")
+        prompt_dataset = extract_prompts_from_positive_dataset(train_ds)
 
     console.print(f"Using {len(prompt_dataset)} prompts for GRPO training\n")
 
@@ -58,12 +60,8 @@ def main():
         reward_style_weight=config["reward"].get("style_weight", 0.65),
         reward_length_bonus_weight=config["reward"].get("length_bonus_weight", 0.1),
         reward_prompt_relevance_weight=config["reward"].get("prompt_relevance_weight", 0.2),
-        reward_repetition_penalty_weight=config["reward"].get(
-            "repetition_penalty_weight", 0.15
-        ),
-        reward_prompt_echo_penalty_weight=config["reward"].get(
-            "prompt_echo_penalty_weight", 0.1
-        ),
+        reward_repetition_penalty_weight=config["reward"].get("repetition_penalty_weight", 0.15),
+        reward_prompt_echo_penalty_weight=config["reward"].get("prompt_echo_penalty_weight", 0.1),
         reward_reference_copy_penalty_weight=config["reward"].get(
             "reference_copy_penalty_weight", 0.15
         ),

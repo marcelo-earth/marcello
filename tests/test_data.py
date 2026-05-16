@@ -1,14 +1,10 @@
 """Tests for the data collection and processing pipeline."""
 
 import json
-import tempfile
-from pathlib import Path
-
-import pytest
 
 from marcello.data.collector import WritingSampleCollector
-from marcello.data.processor import TextProcessor
 from marcello.data.negative_sampler import NegativeSampler, NegativeStrategy
+from marcello.data.processor import TextProcessor
 
 
 class TestWritingSampleCollector:
@@ -38,8 +34,8 @@ class TestWritingSampleCollector:
     def test_collect_from_jsonl(self, tmp_path):
         jsonl_file = tmp_path / "messages.jsonl"
         lines = [
-            json.dumps({"text": "A long enough message that should be collected by the system.", "ts": 123}),
-            json.dumps({"text": "Another message with sufficient length for the minimum threshold.", "ts": 456}),
+            json.dumps({"text": "A long enough message to be collected.", "ts": 123}),
+            json.dumps({"text": "Another message long enough to pass the threshold.", "ts": 456}),
         ]
         jsonl_file.write_text("\n".join(lines))
 
@@ -50,8 +46,8 @@ class TestWritingSampleCollector:
         assert collector.samples[0].source_type == "jsonl"
 
     def test_collect_from_directory(self, tmp_path):
-        (tmp_path / "a.txt").write_text("First file with enough content to pass the length filter easily.")
-        (tmp_path / "b.txt").write_text("Second file also long enough to be a valid writing sample here.")
+        (tmp_path / "a.txt").write_text("First file with enough content to pass the length filter.")
+        (tmp_path / "b.txt").write_text("Second file also long enough to be a valid sample.")
 
         collector = WritingSampleCollector(min_length=20)
         count = collector.collect_from_directory(tmp_path)
@@ -60,7 +56,7 @@ class TestWritingSampleCollector:
 
     def test_to_dataset(self, tmp_path):
         txt_file = tmp_path / "sample.txt"
-        txt_file.write_text("A paragraph long enough to be collected as a valid writing sample by the system.")
+        txt_file.write_text("A paragraph long enough to be collected as a valid writing sample.")
 
         collector = WritingSampleCollector(min_length=20)
         collector.collect_from_txt(txt_file)

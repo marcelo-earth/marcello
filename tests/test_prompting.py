@@ -17,6 +17,10 @@ def test_ensure_control_prompt_wraps_raw_prompt():
 
 
 def test_ensure_control_prompt_preserves_existing_control_prompt():
-    prompt = "<style:standard> <lang:en> <task:continue>\nContinue this text in Marcelo's voice. Keep it clear, warm, and precise.\n\nSeed:\nThe city waited for an answer.\n\nCompletion:"
+    prompt = (
+        "<style:standard> <lang:en> <task:continue>\n"
+        "Continue this text in Marcelo's voice. Keep it clear, warm, and precise.\n\n"
+        "Seed:\nThe city waited for an answer.\n\nCompletion:"
+    )
 
     assert ensure_control_prompt(prompt, style="poetic", language="es") == prompt

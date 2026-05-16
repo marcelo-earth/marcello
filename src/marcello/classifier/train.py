@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+from datasets import Dataset
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from datasets import Dataset
 from transformers import get_linear_schedule_with_warmup
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from marcello.classifier.model import StyleClassifier
 

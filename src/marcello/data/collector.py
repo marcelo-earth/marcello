@@ -57,8 +57,10 @@ class WritingSampleCollector:
             if self.min_length <= len(chunk) <= self.max_length:
                 self._samples.append(
                     WritingSample(
-                        text=chunk, source=str(path),
-                        source_type="txt", style=self._current_style,
+                        text=chunk,
+                        source=str(path),
+                        source_type="txt",
+                        style=self._current_style,
                     )
                 )
                 added += 1
