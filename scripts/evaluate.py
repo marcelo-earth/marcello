@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 from rich.console import Console
@@ -12,6 +14,15 @@ from marcello.classifier.model import StyleClassifier
 from marcello.eval.compare import compare_models
 
 console = Console()
+
+
+def _git_hash() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        return None
 
 
 def main():
@@ -30,9 +41,7 @@ def main():
     )
     parser.add_argument("--style", type=str, default="standard")
     parser.add_argument("--language", type=str, choices=["es", "en"], default=None)
-    parser.add_argument(
-        "--output", type=str, default=None, help="Optional path to save JSON results"
-    )
+    parser.add_argument("--output", type=str, default=None, help="Path to save JSON results")
     args = parser.parse_args()
 
     console.print("\n[bold]MarceLLo Evaluation[/]\n")
@@ -66,15 +75,20 @@ def main():
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
         output_path.write_text(
             json.dumps(
                 {
+                    "run_id": now.strftime("%Y%m%d-%H%M%S"),
+                    "timestamp": now.isoformat(),
+                    "git_hash": _git_hash(),
                     "model": args.model,
                     "base_model": args.base_model,
                     "classifier": args.classifier,
                     "format_prompts": args.format_prompts,
                     "style": args.style,
                     "language": args.language,
+                    "prompt_count": len(prompts),
                     "results": results,
                 },
                 indent=2,
