@@ -52,9 +52,7 @@ def test_reward_penalizes_echo_repetition_and_reference_copy(tmp_path, monkeypat
     reference_path = tmp_path / "train_ds"
     Dataset.from_dict(
         {
-            "text": [
-                "The stars were waiting quietly above us while the city forgot to look up."
-            ],
+            "text": ["The stars were waiting quietly above us while the city forgot to look up."],
             "label": [1],
         }
     ).save_to_disk(reference_path)
@@ -97,7 +95,9 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
 
     captured = {}
 
-    def fake_init(self, model_name="microsoft/deberta-v3-small", dropout=0.1, freeze_encoder_layers=0):
+    def fake_init(
+        self, model_name="microsoft/deberta-v3-small", dropout=0.1, freeze_encoder_layers=0
+    ):
         torch.nn.Module.__init__(self)
         captured["args"] = (model_name, dropout, freeze_encoder_layers)
         self.model_name = model_name
@@ -122,3 +122,20 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
     StyleClassifier.from_pretrained(str(path))
 
     assert captured["args"] == ("tiny-test-model", 0.25, 2)
+
+
+def test_style_reward_defaults_match_grpo_yaml(monkeypatch):
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+
+    reward = StyleReward(classifier_path="unused")
+
+    assert reward.target_length == 180
+    assert reward.length_bonus_weight == 0.1
+    assert reward.style_weight == 0.65
+    assert reward.prompt_relevance_weight == 0.2
+    assert reward.repetition_penalty_weight == 0.15
+    assert reward.reference_copy_penalty_weight == 0.15
+    assert reward.prompt_echo_penalty_weight == 0.1
