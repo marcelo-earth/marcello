@@ -64,7 +64,7 @@ class MarceLLoGRPOConfig:
     reward_repetition_penalty_weight: float = 0.15
     reward_prompt_echo_penalty_weight: float = 0.1
     reward_reference_copy_penalty_weight: float = 0.15
-    reward_target_length: int = 200
+    reward_target_length: int = 180
     reward_reference_texts_path: str | None = "data/processed/train"
     reward_reference_ngram_size: int = 8
 

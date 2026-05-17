@@ -122,3 +122,20 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
     StyleClassifier.from_pretrained(str(path))
 
     assert captured["args"] == ("tiny-test-model", 0.25, 2)
+
+
+def test_style_reward_defaults_match_grpo_yaml(monkeypatch):
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+
+    reward = StyleReward(classifier_path="unused")
+
+    assert reward.target_length == 180
+    assert reward.length_bonus_weight == 0.1
+    assert reward.style_weight == 0.65
+    assert reward.prompt_relevance_weight == 0.2
+    assert reward.repetition_penalty_weight == 0.15
+    assert reward.reference_copy_penalty_weight == 0.15
+    assert reward.prompt_echo_penalty_weight == 0.1
