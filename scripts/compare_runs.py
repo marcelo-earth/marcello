@@ -215,6 +215,11 @@ def main() -> None:
         action="store_true",
         help="Print the actual completions for the top-N most regressed prompts",
     )
+    parser.add_argument(
+        "--only-regressions",
+        action="store_true",
+        help="Only show prompts where run B scored lower than run A",
+    )
     args = parser.parse_args()
 
     run_a = load_run(args.run_a)
@@ -230,6 +235,8 @@ def main() -> None:
     console.print()
 
     prompt_rows = compare_per_prompt(run_a, run_b)
+    if args.only_regressions:
+        prompt_rows = [r for r in prompt_rows if r["delta"] < 0]
     if prompt_rows:
         print_per_prompt_table(prompt_rows, args.label_a, args.label_b, args.top_n)
         improved = sum(1 for r in prompt_rows if r["delta"] > 0)
