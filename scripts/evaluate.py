@@ -26,6 +26,36 @@ def _git_hash() -> str | None:
         return None
 
 
+def _print_summary(base_metrics: dict, grpo_metrics: dict) -> None:
+    from rich.table import Table
+
+    table = Table(title="Evaluation Summary", show_lines=False)
+    table.add_column("Metric", style="cyan")
+    table.add_column("Base", justify="right")
+    table.add_column("GRPO", justify="right")
+    table.add_column("Delta", justify="right", style="bold")
+
+    display = [
+        ("style_score_mean", "Style score (mean)"),
+        ("style_score_std", "Style score (std)"),
+        ("distinct_1", "Distinct-1"),
+        ("distinct_2", "Distinct-2"),
+        ("avg_words", "Avg words"),
+        ("perplexity", "Perplexity"),
+    ]
+    for key, label in display:
+        base_val = base_metrics.get(key)
+        grpo_val = grpo_metrics.get(key)
+        if base_val is None or grpo_val is None:
+            continue
+        delta = grpo_val - base_val
+        sign = "+" if delta > 0 else ""
+        table.add_row(label, f"{base_val:.4f}", f"{grpo_val:.4f}", f"{sign}{delta:.4f}")
+
+    console.print()
+    console.print(table)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate MarceLLo model")
     parser.add_argument("--model", type=str, default="outputs/grpo/final")
@@ -82,10 +112,7 @@ def main():
         console.print(f"  Base perplexity:  {base_ppl:.2f}")
         console.print(f"  GRPO perplexity:  {grpo_ppl:.2f}  ({grpo_ppl - base_ppl:+.2f})")
 
-    style_improvement = (
-        results["grpo_metrics"]["style_score_mean"] - results["base_metrics"]["style_score_mean"]
-    )
-    console.print(f"\n[bold]Style score improvement: {style_improvement:+.4f}[/]")
+    _print_summary(results["base_metrics"], results["grpo_metrics"])
 
     if args.output:
         output_path = Path(args.output)
