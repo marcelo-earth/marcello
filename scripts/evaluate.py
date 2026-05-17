@@ -12,6 +12,7 @@ from rich.console import Console
 
 from marcello.classifier.model import StyleClassifier
 from marcello.eval.compare import compare_models
+from marcello.eval.metrics import perplexity
 
 console = Console()
 
@@ -42,6 +43,11 @@ def main():
     parser.add_argument("--style", type=str, default="standard")
     parser.add_argument("--language", type=str, choices=["es", "en"], default=None)
     parser.add_argument("--output", type=str, default=None, help="Path to save JSON results")
+    parser.add_argument(
+        "--perplexity",
+        action="store_true",
+        help="Compute perplexity using the base model (slow — loads model twice)",
+    )
     args = parser.parse_args()
 
     console.print("\n[bold]MarceLLo Evaluation[/]\n")
@@ -66,6 +72,15 @@ def main():
         prompt_style=args.style,
         prompt_language=args.language,
     )
+
+    if args.perplexity:
+        console.print("\n[bold]Computing perplexity (base model)...[/]")
+        base_ppl = perplexity(results["base_completions"], model_name=args.base_model)
+        grpo_ppl = perplexity(results["grpo_completions"], model_name=args.base_model)
+        results["base_metrics"]["perplexity"] = base_ppl
+        results["grpo_metrics"]["perplexity"] = grpo_ppl
+        console.print(f"  Base perplexity:  {base_ppl:.2f}")
+        console.print(f"  GRPO perplexity:  {grpo_ppl:.2f}  ({grpo_ppl - base_ppl:+.2f})")
 
     style_improvement = (
         results["grpo_metrics"]["style_score_mean"] - results["base_metrics"]["style_score_mean"]
