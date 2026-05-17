@@ -80,6 +80,22 @@ def compare_models(
     base_metrics = compute_style_metrics(base_completions, classifier)
     grpo_metrics = compute_style_metrics(grpo_completions, classifier)
 
+    # per-prompt style scores for regression tracking across runs
+    base_style_scores = classifier.predict(base_completions) if classifier else [None] * len(prompts)
+    grpo_style_scores = (
+        classifier.predict(grpo_completions) if classifier else [None] * len(prompts)
+    )
+    per_prompt = [
+        {
+            "prompt": prompt,
+            "base_completion": base_completions[i],
+            "grpo_completion": grpo_completions[i],
+            "base_style_score": base_style_scores[i],
+            "grpo_style_score": grpo_style_scores[i],
+        }
+        for i, prompt in enumerate(generation_prompts)
+    ]
+
     # print comparison table
     table = Table(title="Model Comparison")
     table.add_column("Metric", style="cyan")
@@ -110,4 +126,5 @@ def compare_models(
         "grpo_metrics": grpo_metrics,
         "base_completions": base_completions,
         "grpo_completions": grpo_completions,
+        "per_prompt": per_prompt,
     }
