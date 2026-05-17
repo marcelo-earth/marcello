@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from peft import PeftModel
-from rich.panel import Panel
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 

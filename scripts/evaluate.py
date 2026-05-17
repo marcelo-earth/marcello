@@ -19,7 +19,9 @@ def main():
     parser.add_argument("--model", type=str, default="outputs/grpo/final")
     parser.add_argument("--base-model", type=str, default="Qwen/Qwen2.5-1.5B")
     parser.add_argument("--classifier", type=str, default="outputs/classifier/best")
-    parser.add_argument("--prompts", type=str, required=True, help="Path to prompts file (one per line)")
+    parser.add_argument(
+        "--prompts", type=str, required=True, help="Path to prompts file (one per line)"
+    )
     parser.add_argument("--max-new-tokens", type=int, default=200)
     parser.add_argument(
         "--format-prompts",
@@ -28,7 +30,9 @@ def main():
     )
     parser.add_argument("--style", type=str, default="standard")
     parser.add_argument("--language", type=str, choices=["es", "en"], default=None)
-    parser.add_argument("--output", type=str, default=None, help="Optional path to save JSON results")
+    parser.add_argument(
+        "--output", type=str, default=None, help="Optional path to save JSON results"
+    )
     args = parser.parse_args()
 
     console.print("\n[bold]MarceLLo Evaluation[/]\n")

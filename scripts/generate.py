@@ -35,7 +35,9 @@ def main():
         action="store_true",
         help="Generate with the base model instead of loading the LoRA adapter",
     )
-    parser.add_argument("--output", type=str, default=None, help="Optional path to save JSON output")
+    parser.add_argument(
+        "--output", type=str, default=None, help="Optional path to save JSON output"
+    )
     args = parser.parse_args()
 
     prompts: list[str] = []

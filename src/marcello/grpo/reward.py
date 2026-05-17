@@ -16,7 +16,6 @@ from datasets import load_from_disk
 from marcello.classifier.model import StyleClassifier
 from marcello.grpo.prompting import extract_seed_text
 
-
 STOPWORDS = {
     "a",
     "an",
@@ -106,7 +105,7 @@ class StyleReward:
         return ngrams
 
     def _length_bonus(self, text: str) -> float:
-        """Small bonus for outputs near the target length. Prevents degenerate short/long outputs."""
+        """Small bonus for outputs near target length. Prevents degenerate short/long outputs."""
         length = len(text.split())
         diff = abs(length - self.target_length) / self.target_length
         return max(0.0, 1.0 - diff)

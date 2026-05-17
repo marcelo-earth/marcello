@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import torch
 from datasets import Dataset
+from rich.console import Console
+from rich.table import Table
 from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
     roc_auc_score,
-    classification_report,
 )
-from rich.console import Console
-from rich.table import Table
 
 from marcello.classifier.model import StyleClassifier
 
@@ -53,9 +52,7 @@ def evaluate_classifier(
     preds = [1 if p > threshold else 0 for p in all_probs]
 
     accuracy = accuracy_score(all_labels, preds)
-    precision, recall, f1, _ = precision_recall_fscore_support(
-        all_labels, preds, average="binary"
-    )
+    precision, recall, f1, _ = precision_recall_fscore_support(all_labels, preds, average="binary")
     auc = roc_auc_score(all_labels, all_probs)
 
     metrics = {

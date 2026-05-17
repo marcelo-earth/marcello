@@ -9,8 +9,6 @@ Metrics:
 
 from __future__ import annotations
 
-from collections import Counter
-
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 

@@ -1,7 +1,7 @@
 """Tests for the style classifier."""
 
-import torch
 import pytest
+import torch
 
 
 class TestStyleClassifier:
