@@ -24,6 +24,7 @@ dependencies = [
     "scikit-learn>=1.4.0",
     "pyyaml>=6.0",
     "rich>=13.0",
+    "huggingface_hub>=0.22.0",
 ]
 
 [project.optional-dependencies]
