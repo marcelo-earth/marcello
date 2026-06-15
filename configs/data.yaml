@@ -19,10 +19,11 @@ processing:
   deduplicate: true
 
 negative_sampling:
-  strategy: prewritten
+  strategy: shuffle_sentences
   path: data/raw/negative_samples
+  num_negatives_per_positive: 1
   seed: 42
-  # fallback strategies (require GPU):
+  # switch to llm_rephrase on GPU for higher-quality negatives:
   # strategy: llm_rephrase
   # model: Qwen/Qwen2.5-1.5B
   # num_negatives_per_positive: 2
