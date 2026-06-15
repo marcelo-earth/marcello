@@ -123,7 +123,7 @@ def extract_prompts_from_positive_dataset(dataset: Dataset, max_prompts: int = 5
 
         text = row["text"].strip()
         seed_text = _first_sentences(text)
-        if len(seed_text) <= 10:
+        if len(seed_text.split()) < 5:
             continue
 
         style = row.get("style", "standard")

@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 console = Console()
@@ -160,6 +161,42 @@ def print_per_prompt_table(rows: list[dict], label_a: str, label_b: str, top_n: 
     console.print(table)
 
 
+def _print_completions(
+    run_a: dict,
+    run_b: dict,
+    prompt_rows: list[dict],
+    label_a: str,
+    label_b: str,
+    top_n: int,
+) -> None:
+    """Print side-by-side completions for the top-N most regressed prompts."""
+    per_a = {item["prompt"]: item for item in run_a.get("per_prompt", [])}
+    per_b = {item["prompt"]: item for item in run_b.get("per_prompt", [])}
+
+    # worst regressions are at the front of prompt_rows
+    regressions = [r for r in prompt_rows if r["delta"] < 0][:top_n]
+    if not regressions:
+        return
+
+    console.print(f"\n[bold]Completions for {len(regressions)} most regressed prompt(s)[/]\n")
+    for row in regressions:
+        prompt = row["prompt"]
+        short = prompt[:80] + "..." if len(prompt) > 80 else prompt
+        console.print(f"[dim]Prompt:[/] {short}")
+        console.print(
+            f"  [yellow]{label_a}[/] score={row['score_a']:.4f}  "
+            f"[yellow]{label_b}[/] score={row['score_b']:.4f}  "
+            f"delta=[red]{row['delta']:+.4f}[/]\n"
+        )
+        a_item = per_a.get(prompt, {})
+        b_item = per_b.get(prompt, {})
+        if a_item.get("grpo_completion"):
+            console.print(Panel(a_item["grpo_completion"], title=label_a, border_style="yellow"))
+        if b_item.get("grpo_completion"):
+            console.print(Panel(b_item["grpo_completion"], title=label_b, border_style="red"))
+        console.print()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare two MarceLLo evaluation runs")
     parser.add_argument("run_a", help="Path to first eval JSON")
@@ -173,6 +210,16 @@ def main() -> None:
         help="Number of per-prompt rows to show (sorted by delta, worst first)",
     )
     parser.add_argument("--output", default=None, help="Save diff summary to a JSON file")
+    parser.add_argument(
+        "--show-completions",
+        action="store_true",
+        help="Print the actual completions for the top-N most regressed prompts",
+    )
+    parser.add_argument(
+        "--only-regressions",
+        action="store_true",
+        help="Only show prompts where run B scored lower than run A",
+    )
     args = parser.parse_args()
 
     run_a = load_run(args.run_a)
@@ -188,6 +235,8 @@ def main() -> None:
     console.print()
 
     prompt_rows = compare_per_prompt(run_a, run_b)
+    if args.only_regressions:
+        prompt_rows = [r for r in prompt_rows if r["delta"] < 0]
     if prompt_rows:
         print_per_prompt_table(prompt_rows, args.label_a, args.label_b, args.top_n)
         improved = sum(1 for r in prompt_rows if r["delta"] > 0)
@@ -197,6 +246,9 @@ def main() -> None:
             f"[red]{regressed} regressed[/]  "
             f"{len(prompt_rows) - improved - regressed} unchanged"
         )
+
+        if args.show_completions:
+            _print_completions(run_a, run_b, prompt_rows, args.label_a, args.label_b, args.top_n)
 
     if args.output:
         out = {
