@@ -88,6 +88,8 @@ class StyleReward:
 
         if torch.cuda.is_available():
             self.classifier = self.classifier.cuda()
+        elif torch.backends.mps.is_available() and hasattr(self.classifier, "to"):
+            self.classifier = self.classifier.to(torch.device("mps"))
 
     def _load_reference_ngrams(self, dataset_path: str | None) -> set[tuple[str, ...]]:
         """Load positive train-set n-grams to penalize memorized generations."""

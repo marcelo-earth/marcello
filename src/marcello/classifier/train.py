@@ -46,13 +46,27 @@ def collate_fn(batch, tokenizer, max_length: int = 512):
     return {**encoded, "labels": labels}
 
 
+def _get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def train_classifier(
     train_dataset: Dataset,
     val_dataset: Dataset,
     config: ClassifierTrainingConfig,
 ) -> StyleClassifier:
     """Train the style classifier and return the best model."""
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = _get_device()
+
+    # compute pos_weight to correct for class imbalance (neg_count / pos_count)
+    labels = train_dataset["label"]
+    n_pos = sum(1 for l in labels if l == 1)
+    n_neg = len(labels) - n_pos
+    pos_weight = torch.tensor([n_neg / max(n_pos, 1)], dtype=torch.float, device=device)
 
     model = StyleClassifier(
         model_name=config.model_name,
@@ -107,7 +121,7 @@ def train_classifier(
 
             for batch in train_loader:
                 batch = {k: v.to(device) for k, v in batch.items()}
-                output = model(**batch)
+                output = model(**batch, pos_weight=pos_weight)
                 loss = output["loss"]
 
                 optimizer.zero_grad()

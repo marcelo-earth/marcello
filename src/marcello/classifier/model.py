@@ -61,11 +61,13 @@ class StyleClassifier(nn.Module):
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         labels: torch.Tensor | None = None,
+        pos_weight: torch.Tensor | None = None,
         **kwargs,
     ) -> dict[str, torch.Tensor]:
         """Forward pass.
 
         Returns dict with 'logits', 'probs', and optionally 'loss'.
+        pos_weight: passed to BCEWithLogitsLoss to correct for class imbalance.
         """
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
         pooled = self.mean_pool(outputs.last_hidden_state, attention_mask)
@@ -75,7 +77,7 @@ class StyleClassifier(nn.Module):
         result = {"logits": logits, "probs": probs}
 
         if labels is not None:
-            loss_fn = nn.BCEWithLogitsLoss()
+            loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             result["loss"] = loss_fn(logits, labels.float())
 
         return result
