@@ -49,8 +49,8 @@ def collate_fn(batch, tokenizer, max_length: int = 512):
 def _get_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
+    # MPS skipped: DeBERTa-v3 backward through embeddings produces NaN
+    # gradients on MPS (PyTorch MPS backend bug). CPU is correct here.
     return torch.device("cpu")
 
 
@@ -87,9 +87,11 @@ def train_classifier(
     )
 
     optimizer = AdamW(
-        model.parameters(),
+        filter(lambda p: p.requires_grad, model.parameters()),
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
+        eps=1e-6,
+        foreach=False,
     )
     total_steps = len(train_loader) * config.epochs
     scheduler = get_linear_schedule_with_warmup(
