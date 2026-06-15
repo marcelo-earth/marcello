@@ -162,33 +162,49 @@ class StyleReward:
         overlap = len(text_ngrams & self.reference_ngrams) / len(text_ngrams)
         return overlap
 
-    def score(self, texts: list[str], prompts: list[str] | None = None) -> list[float]:
+    def score(
+        self,
+        texts: list[str],
+        prompts: list[str] | None = None,
+        return_breakdown: bool = False,
+    ) -> list[float] | list[dict]:
         """Score a batch of generated texts.
 
         Returns rewards in [min_reward, max_reward] range.
+        When return_breakdown=True, returns a list of dicts with per-component
+        values alongside the total, which is useful for diagnosing reward hacking.
         """
         style_probs = self.classifier.predict(texts)
-        rewards = []
+        results = []
 
         for idx, (text, prob) in enumerate(zip(texts, style_probs)):
             prompt = prompts[idx] if prompts else None
-            reward = self.style_weight * self._temperature_scale(prob)
 
-            if self.length_bonus_weight > 0:
-                reward += self.length_bonus_weight * self._length_bonus(text)
-            if prompt and self.prompt_relevance_weight > 0:
-                reward += self.prompt_relevance_weight * self._prompt_relevance(prompt, text)
-            if self.repetition_penalty_weight > 0:
-                reward -= self.repetition_penalty_weight * self._repetition_penalty(text)
-            if prompt and self.prompt_echo_penalty_weight > 0:
-                reward -= self.prompt_echo_penalty_weight * self._prompt_echo_penalty(prompt, text)
-            if self.reference_copy_penalty_weight > 0:
-                reward -= self.reference_copy_penalty_weight * self._reference_copy_penalty(text)
+            style_component = self.style_weight * self._temperature_scale(prob)
+            length_component = self.length_bonus_weight * self._length_bonus(text) if self.length_bonus_weight > 0 else 0.0
+            relevance_component = self.prompt_relevance_weight * self._prompt_relevance(prompt, text) if (prompt and self.prompt_relevance_weight > 0) else 0.0
+            repetition_component = self.repetition_penalty_weight * self._repetition_penalty(text) if self.repetition_penalty_weight > 0 else 0.0
+            echo_component = self.prompt_echo_penalty_weight * self._prompt_echo_penalty(prompt, text) if (prompt and self.prompt_echo_penalty_weight > 0) else 0.0
+            refcopy_component = self.reference_copy_penalty_weight * self._reference_copy_penalty(text) if self.reference_copy_penalty_weight > 0 else 0.0
 
+            reward = style_component + length_component + relevance_component - repetition_component - echo_component - refcopy_component
             reward = max(self.min_reward, min(self.max_reward, reward))
-            rewards.append(reward)
 
-        return rewards
+            if return_breakdown:
+                results.append({
+                    "total": reward,
+                    "raw_style_prob": prob,
+                    "style_score": style_component,
+                    "length_bonus": length_component,
+                    "prompt_relevance": relevance_component,
+                    "repetition_penalty": repetition_component,
+                    "prompt_echo_penalty": echo_component,
+                    "reference_copy_penalty": refcopy_component,
+                })
+            else:
+                results.append(reward)
+
+        return results
 
     def __call__(self, texts: list[str], prompts: list[str] | None = None) -> list[float]:
         """Score texts. Compatible with TRL's reward function interface."""
