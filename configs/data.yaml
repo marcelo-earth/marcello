@@ -19,9 +19,8 @@ processing:
   deduplicate: true
 
 negative_sampling:
-  strategy: shuffle_sentences
+  strategy: prewritten
   path: data/raw/negative_samples
-  num_negatives_per_positive: 1
   seed: 42
   # switch to llm_rephrase on GPU for higher-quality negatives:
   # strategy: llm_rephrase
