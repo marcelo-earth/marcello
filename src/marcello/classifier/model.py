@@ -61,6 +61,7 @@ class StyleClassifier(nn.Module):
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         labels: torch.Tensor | None = None,
+        **kwargs,
     ) -> dict[str, torch.Tensor]:
         """Forward pass.
 

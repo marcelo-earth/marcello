@@ -93,6 +93,12 @@ def main():
     output_path = Path(out_cfg.get("path", "data/processed/"))
     output_path.mkdir(parents=True, exist_ok=True)
 
+    # cast label to ClassLabel so train_test_split can stratify
+    from datasets import ClassLabel
+    contrastive_dataset = contrastive_dataset.cast_column(
+        "label", ClassLabel(names=["generic", "marcelo"])
+    )
+
     split = contrastive_dataset.train_test_split(
         test_size=out_cfg.get("val_split", 0.15),
         seed=out_cfg.get("seed", 42),
