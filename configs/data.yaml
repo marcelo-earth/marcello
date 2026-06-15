@@ -32,3 +32,4 @@ output:
   train_split: 0.85
   val_split: 0.15
   seed: 42
+  balance_classes: true

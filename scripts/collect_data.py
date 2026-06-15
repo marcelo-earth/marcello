@@ -88,8 +88,23 @@ def main():
     contrastive_dataset = sampler.build_contrastive_dataset(positive_dataset)
     console.print(f"  Contrastive dataset: [green]{len(contrastive_dataset)}[/] total samples\n")
 
-    # --- Split and Save ---
+    # --- Balance classes by undersampling the majority ---
+    import random as _random
     out_cfg = config.get("output", {})
+    if out_cfg.get("balance_classes", True):
+        pos_indices = [i for i, lbl in enumerate(contrastive_dataset["label"]) if lbl == 1]
+        neg_indices = [i for i, lbl in enumerate(contrastive_dataset["label"]) if lbl == 0]
+        minority = min(len(pos_indices), len(neg_indices))
+        rng = _random.Random(out_cfg.get("seed", 42))
+        if len(pos_indices) > minority:
+            pos_indices = rng.sample(pos_indices, minority)
+        else:
+            neg_indices = rng.sample(neg_indices, minority)
+        balanced_indices = sorted(pos_indices + neg_indices)
+        contrastive_dataset = contrastive_dataset.select(balanced_indices)
+        console.print(f"  Balanced to [green]{len(contrastive_dataset)}[/] samples ({minority} pos + {minority} neg)\n")
+
+    # --- Split and Save ---
     output_path = Path(out_cfg.get("path", "data/processed/"))
     output_path.mkdir(parents=True, exist_ok=True)
 
