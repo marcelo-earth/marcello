@@ -25,6 +25,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0",
     "huggingface_hub>=0.22.0",
+    "sentencepiece>=0.2.1",
 ]
 
 [project.optional-dependencies]
