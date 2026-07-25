@@ -87,6 +87,27 @@ def main():
         default=5,
         help="Number of folds for cross-validation (default: 5)",
     )
+    parser.add_argument(
+        "--resplit-seed",
+        type=int,
+        default=None,
+        help=(
+            "Merge train+val and re-split with this seed. Use it to train the "
+            "independent judge classifier on a different split than the reward model."
+        ),
+    )
+    parser.add_argument(
+        "--val-fraction",
+        type=float,
+        default=0.15,
+        help="Validation fraction when --resplit-seed is given (default: 0.15)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Override the output directory from the config",
+    )
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -105,7 +126,7 @@ def main():
         warmup_ratio=config["training"].get("warmup_ratio", 0.1),
         weight_decay=config["training"].get("weight_decay", 0.01),
         max_length=config["training"].get("max_length", 512),
-        output_dir=config["output"]["dir"],
+        output_dir=args.output_dir or config["output"]["dir"],
         use_wandb=config["training"].get("use_wandb", False),
     )
 
@@ -119,6 +140,18 @@ def main():
 
     train_dataset = load_from_disk(config["data"]["train_path"])
     val_dataset = load_from_disk(config["data"]["val_path"])
+
+    if args.resplit_seed is not None:
+        # A judge trained on the same split as the reward model would share its
+        # blind spots, which is exactly what the independent evaluation is for.
+        merged = concatenate_datasets([train_dataset, val_dataset])
+        split = merged.train_test_split(
+            test_size=args.val_fraction,
+            seed=args.resplit_seed,
+            stratify_by_column="label",
+        )
+        train_dataset, val_dataset = split["train"], split["test"]
+        console.print(f"Re-split with seed {args.resplit_seed}")
 
     console.print(f"Train samples: {len(train_dataset)}")
     console.print(f"Val samples:   {len(val_dataset)}\n")
