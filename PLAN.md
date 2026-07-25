@@ -36,15 +36,19 @@ Two independent causes, both now addressed:
    length all differ, so any classifier learns topic detection. Fixed by
    generating content-matched negatives (`scripts/generate_negatives.py`).
 
-Backbone comparison, 5-fold CV on frozen features (all near-perfect, which is
-itself the evidence that the corpus is too easy):
+Backbone comparison, 5-fold CV on frozen features. On the old corpus every
+backbone was near-perfect, which is itself the evidence that the corpus was too
+easy. On the rebuilt corpus the same measurement drops to a believable range:
 
-| backbone | accuracy | AUC |
-|---|---|---|
-| microsoft/deberta-v3-small | 0.989 ± 0.014 | 1.000 ± 0.000 |
-| FacebookAI/xlm-roberta-base | 0.989 ± 0.022 | 0.999 ± 0.002 |
-| intfloat/multilingual-e5-small | 0.978 ± 0.044 | 0.996 ± 0.009 |
-| paraphrase-multilingual-MiniLM-L12-v2 | 0.961 ± 0.038 | 0.993 ± 0.011 |
+| backbone | accuracy (old) | AUC (old) | accuracy (new) | AUC (new) |
+|---|---|---|---|---|
+| microsoft/deberta-v3-small | 0.989 | 1.000 | 0.847 ± 0.004 | 0.919 ± 0.006 |
+| FacebookAI/xlm-roberta-base | 0.989 | 0.999 | 0.813 ± 0.013 | 0.902 ± 0.013 |
+| intfloat/multilingual-e5-small | 0.978 | 0.996 | 0.780 ± 0.033 | 0.869 ± 0.031 |
+| paraphrase-multilingual-MiniLM-L12-v2 | 0.961 | 0.993 | not rerun | not rerun |
+
+That 0.919 is the ceiling a frozen-encoder head can reach, and the number the
+trained classifier has to be judged against.
 
 **Gate: the probe must pass before any GRPO run.**
 
@@ -61,15 +65,39 @@ itself the evidence that the corpus is too easy):
 
 ## Step 3 — Grow and fix the corpus
 
-**Status: in progress.**
+**Status: done. 536 samples, 268 per class.**
 
-- 90 positives, paragraph-level. Within the 80-120 target.
-- Wikipedia negatives: 90. Keep them, but they cannot be the only negatives.
-- Rephrased negatives via `scripts/generate_negatives.py` (Qwen2.5-3B-Instruct,
-  one per positive). Same content, neutral voice.
-- Open risk: the rephrases carry grammar errors from a small model, so the
-  classifier could learn "broken Spanish = negative" instead of voice. The
-  sanity probe is what catches this.
+The collector yields 297 paragraph-level positives, but class balancing used to
+discard down to whatever the negative pool could match — 90. With 268 negatives
+the corpus is now 455 train / 81 val.
+
+Negative pool (`scripts/generate_negatives.py`, Qwen2.5-1.5B-Instruct):
+
+| source | count | what it forces |
+|---|---|---|
+| prewritten prose | 69 | generic voice, unrelated topics |
+| Wikipedia | 21 | encyclopedic register |
+| neutral rewrites | 89 | same content and language, voice stripped |
+| poetic rewrites | 89 | another poetic voice on the same theme |
+
+Two spurious signals found and removed while building this:
+
+- **Language drift.** A Spanish system prompt made the model translate the
+  English samples: 39 of the first 90 negatives came back in Spanish, which
+  would have taught the classifier "English means Marcelo". Prompts are now
+  chosen per source language, and a rewrite that changes language is retried
+  and then discarded. Both sets: 0 mismatches.
+- **Poetry as a proxy.** Most positives are poems, so prose-only negatives let
+  "poetry" stand in for "Marcelo". The poetic variant closes that gap.
+
+Open risks:
+
+- The poetic negatives run long (median 53 words against the positives' 33.5),
+  so length is the cue still worth watching. Length-matched sampling is the fix
+  if the probe shows the classifier leaning on it.
+- Rewrites carry grammar errors from a 1.5B model; the classifier could learn
+  "awkward phrasing = negative". A larger rephraser on a GPU would be better.
+- Qwen2.5-3B-Instruct stalled mid-download, hence 1.5B.
 
 ## Step 4 — SFT baseline
 
