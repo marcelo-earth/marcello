@@ -65,6 +65,18 @@ def load_positives(train_path: str, val_path: str) -> list[str]:
     return [row["text"] for row in dataset if row["label"] == 1]
 
 
+def load_done_indices(output_path: Path) -> set[int]:
+    """Positive indices already generated, so a rerun resumes instead of restarting."""
+    if not output_path.exists():
+        return set()
+    done = set()
+    for line in output_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            done.add(json.loads(line)["positive_index"])
+    return done
+
+
 def rephrase(
     texts: list[str],
     model_name: str,
@@ -73,7 +85,8 @@ def rephrase(
     temperature: float,
     max_new_tokens: int,
     seed: int,
-) -> list[dict]:
+    output_path: Path,
+) -> int:
     device = _get_device()
     console.print(f"Loading [cyan]{model_name}[/] on {device} ...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -84,7 +97,13 @@ def rephrase(
     model.eval()
     torch.manual_seed(seed)
 
-    results = []
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    done = load_done_indices(output_path)
+    if done:
+        console.print(f"Resuming: {len(done)} positives already generated")
+
+    written = 0
+    handle = output_path.open("a", encoding="utf-8")
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -94,6 +113,10 @@ def rephrase(
         task = progress.add_task("Rephrasing", total=len(texts) * per_positive)
 
         for index, text in enumerate(texts):
+            if index in done:
+                progress.advance(task, per_positive)
+                continue
+
             prompt = tokenizer.apply_chat_template(
                 [
                     {"role": "system", "content": SYSTEM_PROMPTS[variant]},
@@ -119,19 +142,22 @@ def rephrase(
                 ).strip()
 
                 if generated:
-                    results.append(
-                        {
-                            "text": generated,
-                            "source": f"llm_rephrase_{variant}",
-                            "model": model_name,
-                            "positive_index": index,
-                            "variant": variant,
-                            "repeat": repeat,
-                        }
-                    )
+                    record = {
+                        "text": generated,
+                        "source": f"llm_rephrase_{variant}",
+                        "model": model_name,
+                        "positive_index": index,
+                        "variant": variant,
+                        "repeat": repeat,
+                    }
+                    # written per sample: a killed run keeps everything it produced
+                    handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    handle.flush()
+                    written += 1
                 progress.advance(task)
 
-    return results
+    handle.close()
+    return written
 
 
 def main():
@@ -170,7 +196,8 @@ def main():
         f"\n[bold]Rephrasing {len(positives)} positive samples[/] (variant: {args.variant})\n"
     )
 
-    results = rephrase(
+    output_path = Path(output)
+    written = rephrase(
         positives,
         args.model,
         args.variant,
@@ -178,15 +205,10 @@ def main():
         args.temperature,
         args.max_new_tokens,
         args.seed,
+        output_path,
     )
 
-    output_path = Path(output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as handle:
-        for item in results:
-            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-    console.print(f"\nWrote {len(results)} negatives to {output_path}\n")
+    console.print(f"\nWrote {written} negatives to {output_path}\n")
 
 
 if __name__ == "__main__":
