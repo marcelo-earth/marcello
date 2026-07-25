@@ -26,6 +26,7 @@ class ClassifierTrainingConfig:
     max_length: int = 512
     dropout: float = 0.1
     freeze_encoder_layers: int = 0
+    head_norm: bool = True
     output_dir: str = "outputs/classifier"
     use_wandb: bool = False
 
@@ -66,6 +67,7 @@ def train_classifier(
         model_name=config.model_name,
         dropout=config.dropout,
         freeze_encoder_layers=config.freeze_encoder_layers,
+        head_norm=config.head_norm,
     ).to(device)
 
     train_loader = DataLoader(
@@ -79,6 +81,8 @@ def train_classifier(
         batch_size=config.batch_size,
         collate_fn=lambda b: collate_fn(b, model.tokenizer, config.max_length),
     )
+
+    encoder_is_frozen = not any(p.requires_grad for p in model.encoder.parameters())
 
     optimizer = AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -112,6 +116,11 @@ def train_classifier(
         for epoch in range(config.epochs):
             # --- Train ---
             model.train()
+            if encoder_is_frozen:
+                # A fully frozen encoder is a feature extractor: leaving it in
+                # train mode only adds dropout noise to features that never
+                # get updated, which the head then has to average out.
+                model.encoder.eval()
             train_loss = 0.0
             task = progress.add_task(f"Epoch {epoch + 1}/{config.epochs}", total=len(train_loader))
 

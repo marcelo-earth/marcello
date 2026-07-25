@@ -98,6 +98,7 @@ def main():
         model_name=config["model"]["name"],
         dropout=config["model"].get("dropout", 0.1),
         freeze_encoder_layers=config["model"].get("freeze_encoder_layers", 0),
+        head_norm=config["model"].get("head_norm", True),
         learning_rate=float(config["training"]["learning_rate"]),
         batch_size=config["training"]["batch_size"],
         epochs=config["training"]["epochs"],

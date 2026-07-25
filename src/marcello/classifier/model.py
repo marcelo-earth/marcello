@@ -29,6 +29,7 @@ class StyleClassifier(nn.Module):
         model_name: str = "microsoft/deberta-v3-small",
         dropout: float = 0.1,
         freeze_encoder_layers: int = 0,
+        head_norm: bool = True,
     ):
         super().__init__()
         self.encoder: PreTrainedModel = AutoModel.from_pretrained(model_name)
@@ -36,12 +37,16 @@ class StyleClassifier(nn.Module):
         self.model_name = model_name
         self.dropout = dropout
         self.freeze_encoder_layers = freeze_encoder_layers
+        self.head_norm = head_norm
 
         hidden_size = self.encoder.config.hidden_size
-        self.classifier = nn.Sequential(
-            nn.Dropout(dropout),
-            nn.Linear(hidden_size, 1),
-        )
+        # Mean-pooled hidden states come out with uneven per-dimension scale.
+        # Feeding them straight into a linear layer makes the head's effective
+        # learning rate depend on the backbone, which is what stalled training
+        # when only the head was trainable. LayerNorm removes that coupling.
+        head_layers: list[nn.Module] = [nn.LayerNorm(hidden_size)] if head_norm else []
+        head_layers += [nn.Dropout(dropout), nn.Linear(hidden_size, 1)]
+        self.classifier = nn.Sequential(*head_layers)
 
         # DeBERTa-v3 shares the embedding with the MLM head; updating it during
         # downstream fine-tuning destabilises training and produces NaN weights
@@ -120,6 +125,8 @@ class StyleClassifier(nn.Module):
             model_name=config.get("model_name", "microsoft/deberta-v3-small"),
             dropout=config.get("dropout", 0.1),
             freeze_encoder_layers=config.get("freeze_encoder_layers", 0),
+            # checkpoints written before the head LayerNorm existed have no flag
+            head_norm=config.get("head_norm", False),
         )
         state_dict = torch.load(load_path / "model.pt", map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
@@ -136,6 +143,7 @@ class StyleClassifier(nn.Module):
             "hidden_size": self.encoder.config.hidden_size,
             "dropout": self.dropout,
             "freeze_encoder_layers": self.freeze_encoder_layers,
+            "head_norm": self.head_norm,
         }
         (save_path / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         self.tokenizer.save_pretrained(save_path)
