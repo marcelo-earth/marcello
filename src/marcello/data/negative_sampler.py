@@ -9,6 +9,7 @@ Strategies:
 
 from __future__ import annotations
 
+import json
 import random
 from enum import Enum
 from pathlib import Path
@@ -90,7 +91,12 @@ class NegativeSampler:
         return " ".join(sentences)
 
     def _load_prewritten(self) -> list[str]:
-        """Load pre-written negative samples from the directory."""
+        """Load pre-written negative samples from the directory.
+
+        .txt files are split into paragraphs. .jsonl files are read one sample
+        per line from the `text` field, keeping line breaks intact — machine
+        generated negatives that mirror a poem need their shape preserved.
+        """
         texts = []
         for path in sorted(self.prewritten_path.rglob("*.txt")):
             content = path.read_text(encoding="utf-8").strip()
@@ -98,6 +104,16 @@ class NegativeSampler:
                 # split by double newline to get paragraphs
                 paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
                 texts.extend(paragraphs)
+
+        for path in sorted(self.prewritten_path.rglob("*.jsonl")):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                text = json.loads(line).get("text", "").strip()
+                if text:
+                    texts.append(text)
+
         return texts
 
     def generate_negatives(self, positive_texts: list[str]) -> list[str]:
