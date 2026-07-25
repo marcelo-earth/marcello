@@ -86,6 +86,8 @@ def main():
     )
 
     contrastive_dataset = sampler.build_contrastive_dataset(positive_dataset)
+    for source, count in sorted(sampler.source_counts.items()):
+        console.print(f"    negatives from {source}: [green]{count}[/]")
     console.print(f"  Contrastive dataset: [green]{len(contrastive_dataset)}[/] total samples\n")
 
     # --- Balance classes by undersampling the majority ---

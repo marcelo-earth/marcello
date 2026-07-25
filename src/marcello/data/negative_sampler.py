@@ -55,6 +55,7 @@ class NegativeSampler:
         self.seed = seed
         self._rng = random.Random(seed)
         self._pipeline = None
+        self.source_counts: dict[str, int] = {}
 
     def _get_pipeline(self):
         """Lazy-load the text generation pipeline (only for llm_rephrase)."""
@@ -96,16 +97,27 @@ class NegativeSampler:
         .txt files are split into paragraphs. .jsonl files are read one sample
         per line from the `text` field, keeping line breaks intact — machine
         generated negatives that mirror a poem need their shape preserved.
+
+        Counts per source directory land in `self.source_counts`, so the mix of
+        negatives a run trained on is recorded rather than guessed at later.
         """
         texts = []
+        self.source_counts = {}
+
+        def record(path: Path, count: int) -> None:
+            key = str(path.parent.relative_to(self.prewritten_path)) or "."
+            self.source_counts[key] = self.source_counts.get(key, 0) + count
+
         for path in sorted(self.prewritten_path.rglob("*.txt")):
             content = path.read_text(encoding="utf-8").strip()
             if content:
                 # split by double newline to get paragraphs
                 paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
                 texts.extend(paragraphs)
+                record(path, len(paragraphs))
 
         for path in sorted(self.prewritten_path.rglob("*.jsonl")):
+            count = 0
             for line in path.read_text(encoding="utf-8").splitlines():
                 line = line.strip()
                 if not line:
@@ -113,6 +125,8 @@ class NegativeSampler:
                 text = json.loads(line).get("text", "").strip()
                 if text:
                     texts.append(text)
+                    count += 1
+            record(path, count)
 
         return texts
 
