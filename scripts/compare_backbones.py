@@ -8,7 +8,7 @@ regression on top, so the backbone choice is made with numbers.
 
 Usage:
     python scripts/compare_backbones.py
-    python scripts/compare_backbones.py --models microsoft/deberta-v3-small intfloat/multilingual-e5-small
+    python scripts/compare_backbones.py --models microsoft/deberta-v3-small xlm-roberta-base
 """
 
 from __future__ import annotations

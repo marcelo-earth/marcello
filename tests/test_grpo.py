@@ -96,13 +96,18 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
     captured = {}
 
     def fake_init(
-        self, model_name="microsoft/deberta-v3-small", dropout=0.1, freeze_encoder_layers=0
+        self,
+        model_name="microsoft/deberta-v3-small",
+        dropout=0.1,
+        freeze_encoder_layers=0,
+        head_norm=True,
     ):
         torch.nn.Module.__init__(self)
-        captured["args"] = (model_name, dropout, freeze_encoder_layers)
+        captured["args"] = (model_name, dropout, freeze_encoder_layers, head_norm)
         self.model_name = model_name
         self.dropout = dropout
         self.freeze_encoder_layers = freeze_encoder_layers
+        self.head_norm = head_norm
         self.encoder = type("Encoder", (), {"config": type("Cfg", (), {"hidden_size": 4})()})()
         self.classifier = torch.nn.Sequential(torch.nn.Dropout(dropout), torch.nn.Linear(4, 1))
         self.tokenizer = object()
@@ -121,7 +126,8 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
 
     StyleClassifier.from_pretrained(str(path))
 
-    assert captured["args"] == ("tiny-test-model", 0.25, 2)
+    # checkpoints saved before head_norm existed must load with it disabled
+    assert captured["args"] == ("tiny-test-model", 0.25, 2, False)
 
 
 def test_style_reward_defaults_match_grpo_yaml(monkeypatch):

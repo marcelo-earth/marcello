@@ -10,7 +10,8 @@ that settles whether the style transfer worked.
 
 Usage:
     python scripts/build_human_eval.py --generations outputs/eval/latest.json
-    python scripts/build_human_eval.py --generations outputs/eval/latest.json --field base_completions
+    python scripts/build_human_eval.py --generations outputs/eval/latest.json \
+        --field base_completions
 """
 
 from __future__ import annotations

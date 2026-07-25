@@ -40,7 +40,12 @@ def load_positive_controls(val_path: str, limit: int) -> list[dict]:
     dataset = load_from_disk(val_path)
     positives = [row for row in dataset if row["label"] == 1]
     return [
-        {"id": f"val_positive_{i}", "category": "held_out_marcelo", "lang": "-", "text": row["text"]}
+        {
+            "id": f"val_positive_{i}",
+            "category": "held_out_marcelo",
+            "lang": "-",
+            "text": row["text"],
+        }
         for i, row in enumerate(positives[:limit])
     ]
 
