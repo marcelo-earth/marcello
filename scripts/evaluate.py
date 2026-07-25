@@ -92,7 +92,10 @@ def main():
         "--judge-classifier",
         type=str,
         default=None,
-        help="Path to a second independent classifier used only for evaluation (never for training)",
+        help=(
+            "Path to a second independent classifier used only for evaluation, "
+            "never for training"
+        ),
     )
     parser.add_argument(
         "--reward-config",
@@ -144,17 +147,24 @@ def main():
         console.print("\n[bold]Scoring with independent judge classifier...[/]")
         judge = StyleClassifier.from_pretrained(args.judge_classifier)
         judge.eval()
-        base_judge = judge.predict(results["base_completions"])
-        grpo_judge = judge.predict(results["grpo_completions"])
-        results["base_metrics"]["judge_score_mean"] = sum(base_judge) / len(base_judge)
-        results["grpo_metrics"]["judge_score_mean"] = sum(grpo_judge) / len(grpo_judge)
-        results["base_metrics"]["judge_score_std"] = (sum((s - results["base_metrics"]["judge_score_mean"]) ** 2 for s in base_judge) / len(base_judge)) ** 0.5
-        results["grpo_metrics"]["judge_score_std"] = (sum((s - results["grpo_metrics"]["judge_score_mean"]) ** 2 for s in grpo_judge) / len(grpo_judge)) ** 0.5
+        judge_scores = {
+            "base": judge.predict(results["base_completions"]),
+            "grpo": judge.predict(results["grpo_completions"]),
+        }
+        for label, scores in judge_scores.items():
+            mean = sum(scores) / len(scores)
+            std = (sum((s - mean) ** 2 for s in scores) / len(scores)) ** 0.5
+            results[f"{label}_metrics"]["judge_score_mean"] = mean
+            results[f"{label}_metrics"]["judge_score_std"] = std
+
         for i, entry in enumerate(results["per_prompt"]):
-            entry["base_judge_score"] = base_judge[i]
-            entry["grpo_judge_score"] = grpo_judge[i]
-        console.print(f"  Base judge score: {results['base_metrics']['judge_score_mean']:.4f}")
-        console.print(f"  GRPO judge score: {results['grpo_metrics']['judge_score_mean']:.4f}  ({results['grpo_metrics']['judge_score_mean'] - results['base_metrics']['judge_score_mean']:+.4f})")
+            entry["base_judge_score"] = judge_scores["base"][i]
+            entry["grpo_judge_score"] = judge_scores["grpo"][i]
+
+        base_mean = results["base_metrics"]["judge_score_mean"]
+        grpo_mean = results["grpo_metrics"]["judge_score_mean"]
+        console.print(f"  Base judge score: {base_mean:.4f}")
+        console.print(f"  GRPO judge score: {grpo_mean:.4f}  ({grpo_mean - base_mean:+.4f})")
 
     if args.reward_config:
         console.print("\n[bold]Computing per-component reward breakdown...[/]")
@@ -180,8 +190,19 @@ def main():
             ("base", results["base_completions"], results["base_metrics"]),
             ("grpo", results["grpo_completions"], results["grpo_metrics"]),
         ]:
-            breakdowns = reward_fn.score(completions, prompts=prompts_for_reward, return_breakdown=True)
-            component_keys = ["total", "raw_style_prob", "style_score", "length_bonus", "prompt_relevance", "repetition_penalty", "prompt_echo_penalty", "reference_copy_penalty"]
+            breakdowns = reward_fn.score(
+                completions, prompts=prompts_for_reward, return_breakdown=True
+            )
+            component_keys = [
+                "total",
+                "raw_style_prob",
+                "style_score",
+                "length_bonus",
+                "prompt_relevance",
+                "repetition_penalty",
+                "prompt_echo_penalty",
+                "reference_copy_penalty",
+            ]
             for key in component_keys:
                 vals = [b[key] for b in breakdowns]
                 metrics_dict[f"reward_{key}_mean"] = sum(vals) / len(vals)

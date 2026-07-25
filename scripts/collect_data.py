@@ -102,7 +102,10 @@ def main():
             neg_indices = rng.sample(neg_indices, minority)
         balanced_indices = sorted(pos_indices + neg_indices)
         contrastive_dataset = contrastive_dataset.select(balanced_indices)
-        console.print(f"  Balanced to [green]{len(contrastive_dataset)}[/] samples ({minority} pos + {minority} neg)\n")
+        console.print(
+            f"  Balanced to [green]{len(contrastive_dataset)}[/] samples "
+            f"({minority} pos + {minority} neg)\n"
+        )
 
     # --- Split and Save ---
     output_path = Path(out_cfg.get("path", "data/processed/"))

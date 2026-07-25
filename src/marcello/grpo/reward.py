@@ -183,13 +183,40 @@ class StyleReward:
             prompt = prompts[idx] if prompts else None
 
             style_component = self.style_weight * self._temperature_scale(prob)
-            length_component = self.length_bonus_weight * self._length_bonus(text) if self.length_bonus_weight > 0 else 0.0
-            relevance_component = self.prompt_relevance_weight * self._prompt_relevance(prompt, text) if (prompt and self.prompt_relevance_weight > 0) else 0.0
-            repetition_component = self.repetition_penalty_weight * self._repetition_penalty(text) if self.repetition_penalty_weight > 0 else 0.0
-            echo_component = self.prompt_echo_penalty_weight * self._prompt_echo_penalty(prompt, text) if (prompt and self.prompt_echo_penalty_weight > 0) else 0.0
-            refcopy_component = self.reference_copy_penalty_weight * self._reference_copy_penalty(text) if self.reference_copy_penalty_weight > 0 else 0.0
+            length_component = (
+                self.length_bonus_weight * self._length_bonus(text)
+                if self.length_bonus_weight > 0
+                else 0.0
+            )
+            relevance_component = (
+                self.prompt_relevance_weight * self._prompt_relevance(prompt, text)
+                if (prompt and self.prompt_relevance_weight > 0)
+                else 0.0
+            )
+            repetition_component = (
+                self.repetition_penalty_weight * self._repetition_penalty(text)
+                if self.repetition_penalty_weight > 0
+                else 0.0
+            )
+            echo_component = (
+                self.prompt_echo_penalty_weight * self._prompt_echo_penalty(prompt, text)
+                if (prompt and self.prompt_echo_penalty_weight > 0)
+                else 0.0
+            )
+            refcopy_component = (
+                self.reference_copy_penalty_weight * self._reference_copy_penalty(text)
+                if self.reference_copy_penalty_weight > 0
+                else 0.0
+            )
 
-            reward = style_component + length_component + relevance_component - repetition_component - echo_component - refcopy_component
+            reward = (
+                style_component
+                + length_component
+                + relevance_component
+                - repetition_component
+                - echo_component
+                - refcopy_component
+            )
             reward = max(self.min_reward, min(self.max_reward, reward))
 
             if return_breakdown:

@@ -81,7 +81,9 @@ def compare_models(
     grpo_metrics = compute_style_metrics(grpo_completions, classifier)
 
     # per-prompt style scores for regression tracking across runs
-    base_style_scores = classifier.predict(base_completions) if classifier else [None] * len(prompts)
+    base_style_scores = (
+        classifier.predict(base_completions) if classifier else [None] * len(prompts)
+    )
     grpo_style_scores = (
         classifier.predict(grpo_completions) if classifier else [None] * len(prompts)
     )

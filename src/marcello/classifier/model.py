@@ -51,8 +51,9 @@ class StyleClassifier(nn.Module):
         # DeBERTa-v3 shares the embedding with the MLM head; updating it during
         # downstream fine-tuning destabilises training and produces NaN weights
         # after a single AdamW step. Freeze it as the DeBERTa-v3 paper recommends.
-        if hasattr(self.encoder, "embeddings") and hasattr(self.encoder.embeddings, "word_embeddings"):
-            self.encoder.embeddings.word_embeddings.weight.requires_grad_(False)
+        embeddings = getattr(self.encoder, "embeddings", None)
+        if hasattr(embeddings, "word_embeddings"):
+            embeddings.word_embeddings.weight.requires_grad_(False)
 
         # optionally freeze early encoder layers for faster training
         if freeze_encoder_layers > 0:

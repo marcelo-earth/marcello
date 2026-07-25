@@ -30,20 +30,27 @@ def _run_cross_validation(
     skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
     fold_accuracies = []
 
-    console.print(f"\n[bold]Running {k}-fold stratified cross-validation ({len(full_dataset)} samples)[/]\n")
+    console.print(
+        f"\n[bold]Running {k}-fold stratified cross-validation "
+        f"({len(full_dataset)} samples)[/]\n"
+    )
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(indices, labels), start=1):
         fold_train = full_dataset.select(train_idx)
         fold_val = full_dataset.select(val_idx)
 
         pos = sum(fold_val["label"])
-        console.print(f"Fold {fold}/{k}: train={len(fold_train)}, val={len(fold_val)} ({pos} pos / {len(fold_val) - pos} neg)")
+        console.print(
+            f"Fold {fold}/{k}: train={len(fold_train)}, val={len(fold_val)} "
+            f"({pos} pos / {len(fold_val) - pos} neg)"
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             fold_config = ClassifierTrainingConfig(
                 model_name=training_config.model_name,
                 dropout=training_config.dropout,
                 freeze_encoder_layers=training_config.freeze_encoder_layers,
+                head_norm=training_config.head_norm,
                 learning_rate=training_config.learning_rate,
                 batch_size=training_config.batch_size,
                 epochs=training_config.epochs,
