@@ -27,15 +27,29 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 console = Console()
 
-SYSTEM_PROMPT = (
-    "Eres un editor que reescribe textos en una voz neutra y genérica. "
-    "Conservas el idioma, el tema y la longitud aproximada del original, "
-    "pero eliminas toda voz personal: metáforas propias, ritmo, saltos de línea "
-    "expresivos, giros idiosincráticos. El resultado debe sonar a texto escrito "
-    "por cualquiera. Responde solo con el texto reescrito."
-)
+SYSTEM_PROMPTS = {
+    # neutral: strips the voice but keeps the content, so style is the only signal
+    "neutral": (
+        "Eres un editor que reescribe textos en una voz neutra y genérica. "
+        "Conservas el idioma, el tema y la longitud aproximada del original, "
+        "pero eliminas toda voz personal: metáforas propias, ritmo, saltos de línea "
+        "expresivos, giros idiosincráticos. El resultado debe sonar a texto escrito "
+        "por cualquiera. Responde solo con el texto reescrito."
+    ),
+    # poetic: another poetic voice on the same theme, so the classifier cannot
+    # settle for "poetry equals Marcelo" — the probe scores poems it never saw
+    "poetic": (
+        "Eres un poeta clásico. Reescribes el texto sobre el mismo tema pero con "
+        "otra voz poética: registro formal y solemne, imágenes tradicionales, "
+        "vocabulario elevado. Conservas el idioma y la longitud aproximada. "
+        "No imites el estilo del original. Responde solo con el texto reescrito."
+    ),
+}
 
-USER_PROMPT = "Reescribe este texto en voz neutra y genérica:\n\n{text}"
+USER_PROMPTS = {
+    "neutral": "Reescribe este texto en voz neutra y genérica:\n\n{text}",
+    "poetic": "Reescribe este texto con otra voz poética, formal y clásica:\n\n{text}",
+}
 
 
 def _get_device() -> torch.device:
@@ -54,6 +68,7 @@ def load_positives(train_path: str, val_path: str) -> list[str]:
 def rephrase(
     texts: list[str],
     model_name: str,
+    variant: str,
     per_positive: int,
     temperature: float,
     max_new_tokens: int,
@@ -81,15 +96,15 @@ def rephrase(
         for index, text in enumerate(texts):
             prompt = tokenizer.apply_chat_template(
                 [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": USER_PROMPT.format(text=text)},
+                    {"role": "system", "content": SYSTEM_PROMPTS[variant]},
+                    {"role": "user", "content": USER_PROMPTS[variant].format(text=text)},
                 ],
                 tokenize=False,
                 add_generation_prompt=True,
             )
             encoded = tokenizer(prompt, return_tensors="pt").to(device)
 
-            for variant in range(per_positive):
+            for repeat in range(per_positive):
                 with torch.no_grad():
                     output = model.generate(
                         **encoded,
@@ -107,10 +122,11 @@ def rephrase(
                     results.append(
                         {
                             "text": generated,
-                            "source": "llm_rephrase",
+                            "source": f"llm_rephrase_{variant}",
                             "model": model_name,
                             "positive_index": index,
                             "variant": variant,
+                            "repeat": repeat,
                         }
                     )
                 progress.advance(task)
@@ -121,6 +137,13 @@ def rephrase(
 def main():
     parser = argparse.ArgumentParser(description="Generate rephrased negative samples")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
+    parser.add_argument(
+        "--variant",
+        type=str,
+        default="neutral",
+        choices=sorted(SYSTEM_PROMPTS),
+        help="neutral strips the voice; poetic writes another poetic voice on the same theme",
+    )
     parser.add_argument("--train-path", type=str, default="data/processed/train")
     parser.add_argument("--val-path", type=str, default="data/processed/val")
     parser.add_argument("--per-positive", type=int, default=1)
@@ -131,25 +154,33 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="data/raw/negative_samples/rephrased/llm_rephrase.jsonl",
+        default=None,
+        help="Defaults to data/raw/negative_samples/rephrased/llm_rephrase_<variant>.jsonl",
     )
     args = parser.parse_args()
+
+    output = args.output or (
+        f"data/raw/negative_samples/rephrased/llm_rephrase_{args.variant}.jsonl"
+    )
 
     positives = load_positives(args.train_path, args.val_path)
     if args.limit:
         positives = positives[: args.limit]
-    console.print(f"\n[bold]Rephrasing {len(positives)} positive samples[/]\n")
+    console.print(
+        f"\n[bold]Rephrasing {len(positives)} positive samples[/] (variant: {args.variant})\n"
+    )
 
     results = rephrase(
         positives,
         args.model,
+        args.variant,
         args.per_positive,
         args.temperature,
         args.max_new_tokens,
         args.seed,
     )
 
-    output_path = Path(args.output)
+    output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as handle:
         for item in results:
