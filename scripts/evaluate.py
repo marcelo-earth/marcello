@@ -13,7 +13,8 @@ from rich.console import Console
 
 from marcello.classifier.model import StyleClassifier
 from marcello.eval.compare import compare_models
-from marcello.eval.metrics import perplexity
+from marcello.eval.metrics import compute_style_metrics, perplexity
+from marcello.grpo.prompting import extract_seed_text, infer_language
 
 console = Console()
 
@@ -186,6 +187,35 @@ def main():
                 metrics_dict[f"reward_{key}_mean"] = sum(vals) / len(vals)
             for i, entry in enumerate(results["per_prompt"]):
                 entry[f"{label}_reward_breakdown"] = breakdowns[i]
+
+    # Spanish and English completions have different length and diversity
+    # distributions; a single average hides a regression in one of them.
+    console.print("\n[bold]Per-language breakdown[/]")
+    results["per_language"] = {}
+    for language in ("es", "en"):
+        indices = [
+            i
+            for i, prompt in enumerate(results["prompts"])
+            if infer_language(extract_seed_text(prompt)) == language
+        ]
+        if not indices:
+            continue
+
+        results["per_language"][language] = {
+            "prompt_count": len(indices),
+            "base": compute_style_metrics(
+                [results["base_completions"][i] for i in indices], classifier=classifier
+            ),
+            "grpo": compute_style_metrics(
+                [results["grpo_completions"][i] for i in indices], classifier=classifier
+            ),
+        }
+        base_style = results["per_language"][language]["base"]["style_score_mean"]
+        grpo_style = results["per_language"][language]["grpo"]["style_score_mean"]
+        console.print(
+            f"  {language} ({len(indices)} prompts): "
+            f"base {base_style:.4f} -> grpo {grpo_style:.4f} ({grpo_style - base_style:+.4f})"
+        )
 
     _print_summary(results["base_metrics"], results["grpo_metrics"])
 
