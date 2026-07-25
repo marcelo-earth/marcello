@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+import torch.nn as nn
 from datasets import Dataset
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from torch.optim import AdamW
@@ -53,6 +54,56 @@ def _get_device() -> torch.device:
     # MPS skipped: DeBERTa-v3 backward through embeddings produces NaN
     # gradients on MPS (PyTorch MPS backend bug). CPU is correct here.
     return torch.device("cpu")
+
+
+def _cache_features(model: StyleClassifier, loader: DataLoader, device: torch.device):
+    """Run the frozen encoder once and keep the pooled features.
+
+    A frozen encoder produces the same features every epoch, so re-running it
+    20 times is the entire cost of training a head that takes seconds.
+    """
+    model.encoder.eval()
+    features, labels = [], []
+
+    with torch.no_grad():
+        for batch in loader:
+            batch = {k: v.to(device) for k, v in batch.items()}
+            outputs = model.encoder(
+                input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
+            )
+            features.append(model.mean_pool(outputs.last_hidden_state, batch["attention_mask"]))
+            labels.append(batch["labels"])
+
+    return torch.cat(features), torch.cat(labels)
+
+
+def _iter_batches(source, batch_size: int, device: torch.device, shuffle: bool):
+    """Yield (inputs, labels) from either cached features or a tokenizing loader."""
+    if isinstance(source, tuple):
+        features, labels = source
+        order = torch.randperm(len(labels)) if shuffle else torch.arange(len(labels))
+        for start in range(0, len(order), batch_size):
+            index = order[start : start + batch_size]
+            yield features[index], labels[index]
+    else:
+        for batch in source:
+            batch = {k: v.to(device) for k, v in batch.items()}
+            yield batch, batch["labels"]
+
+
+def _forward(model: StyleClassifier, inputs) -> dict[str, torch.Tensor]:
+    """Run the head on cached features, or the whole model on tokenized inputs."""
+    if isinstance(inputs, dict):
+        return model(**inputs)
+
+    logits = model.classifier(inputs).squeeze(-1)
+    return {"logits": logits, "probs": torch.sigmoid(logits)}
+
+
+def _batch_count(source, batch_size: int) -> int:
+    if isinstance(source, tuple):
+        return (len(source[1]) + batch_size - 1) // batch_size
+    return len(source)
 
 
 def train_classifier(
@@ -107,6 +158,12 @@ def train_classifier(
     output_path = Path(config.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
+    loss_fn = nn.BCEWithLogitsLoss()
+    train_source, val_source = train_loader, val_loader
+    if encoder_is_frozen:
+        train_source = _cache_features(model, train_loader, device)
+        val_source = _cache_features(model, val_loader, device)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -122,12 +179,17 @@ def train_classifier(
                 # get updated, which the head then has to average out.
                 model.encoder.eval()
             train_loss = 0.0
-            task = progress.add_task(f"Epoch {epoch + 1}/{config.epochs}", total=len(train_loader))
+            train_steps = 0
+            task = progress.add_task(
+                f"Epoch {epoch + 1}/{config.epochs}",
+                total=_batch_count(train_source, config.batch_size),
+            )
 
-            for batch in train_loader:
-                batch = {k: v.to(device) for k, v in batch.items()}
-                output = model(**batch)
-                loss = output["loss"]
+            for inputs, labels in _iter_batches(
+                train_source, config.batch_size, device, shuffle=True
+            ):
+                output = _forward(model, inputs)
+                loss = loss_fn(output["logits"], labels.float())
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -136,26 +198,30 @@ def train_classifier(
                 scheduler.step()
 
                 train_loss += loss.item()
+                train_steps += 1
                 progress.advance(task)
 
-            avg_train_loss = train_loss / len(train_loader)
+            avg_train_loss = train_loss / train_steps
 
             # --- Validate ---
             model.eval()
             val_loss = 0.0
+            val_steps = 0
             correct = 0
             total = 0
 
             with torch.no_grad():
-                for batch in val_loader:
-                    batch = {k: v.to(device) for k, v in batch.items()}
-                    output = model(**batch)
-                    val_loss += output["loss"].item()
+                for inputs, labels in _iter_batches(
+                    val_source, config.batch_size, device, shuffle=False
+                ):
+                    output = _forward(model, inputs)
+                    val_loss += loss_fn(output["logits"], labels.float()).item()
+                    val_steps += 1
                     preds = (output["probs"] > 0.5).long()
-                    correct += (preds == batch["labels"].long()).sum().item()
-                    total += len(batch["labels"])
+                    correct += (preds == labels.long()).sum().item()
+                    total += len(labels)
 
-            avg_val_loss = val_loss / len(val_loader)
+            avg_val_loss = val_loss / val_steps
             accuracy = correct / total
 
             progress.console.print(

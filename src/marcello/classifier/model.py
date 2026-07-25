@@ -57,8 +57,17 @@ class StyleClassifier(nn.Module):
 
         # optionally freeze early encoder layers for faster training
         if freeze_encoder_layers > 0:
-            for layer in self.encoder.encoder.layer[:freeze_encoder_layers]:
+            layers = self.encoder.encoder.layer
+            for layer in layers[:freeze_encoder_layers]:
                 for param in layer.parameters():
+                    param.requires_grad = False
+
+            # Freezing every transformer layer means the encoder is meant to be
+            # a fixed feature extractor, but DeBERTa keeps parameters outside
+            # them (relative position embeddings, LayerNorms). Leaving those
+            # trainable defeats the point and blocks feature caching.
+            if freeze_encoder_layers >= len(layers):
+                for param in self.encoder.parameters():
                     param.requires_grad = False
 
     def mean_pool(self, last_hidden_state: torch.Tensor, attention_mask: torch.Tensor):
