@@ -25,30 +25,58 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from marcello.grpo.prompting import infer_language
+
 console = Console()
 
+# Prompts are per language: a Spanish instruction makes the model translate the
+# English samples, which would teach the classifier "English means Marcelo".
 SYSTEM_PROMPTS = {
     # neutral: strips the voice but keeps the content, so style is the only signal
-    "neutral": (
-        "Eres un editor que reescribe textos en una voz neutra y genérica. "
-        "Conservas el idioma, el tema y la longitud aproximada del original, "
-        "pero eliminas toda voz personal: metáforas propias, ritmo, saltos de línea "
-        "expresivos, giros idiosincráticos. El resultado debe sonar a texto escrito "
-        "por cualquiera. Responde solo con el texto reescrito."
-    ),
+    "neutral": {
+        "es": (
+            "Eres un editor que reescribe textos en una voz neutra y genérica. "
+            "Conservas el idioma, el tema y la longitud aproximada del original, "
+            "pero eliminas toda voz personal: metáforas propias, ritmo, saltos de línea "
+            "expresivos, giros idiosincráticos. El resultado debe sonar a texto escrito "
+            "por cualquiera. Responde solo con el texto reescrito, en español."
+        ),
+        "en": (
+            "You are an editor who rewrites text in a neutral, generic voice. "
+            "You keep the language, the topic and roughly the length of the original, "
+            "but remove all personal voice: distinctive metaphors, rhythm, expressive "
+            "line breaks, idiosyncratic turns of phrase. The result should read like "
+            "anyone could have written it. Reply only with the rewritten text, in English."
+        ),
+    },
     # poetic: another poetic voice on the same theme, so the classifier cannot
     # settle for "poetry equals Marcelo" — the probe scores poems it never saw
-    "poetic": (
-        "Eres un poeta clásico. Reescribes el texto sobre el mismo tema pero con "
-        "otra voz poética: registro formal y solemne, imágenes tradicionales, "
-        "vocabulario elevado. Conservas el idioma y la longitud aproximada. "
-        "No imites el estilo del original. Responde solo con el texto reescrito."
-    ),
+    "poetic": {
+        "es": (
+            "Eres un poeta clásico. Reescribes el texto sobre el mismo tema pero con "
+            "otra voz poética: registro formal y solemne, imágenes tradicionales, "
+            "vocabulario elevado. Conservas el idioma y la longitud aproximada. "
+            "No imites el estilo del original. Responde solo con el texto reescrito, "
+            "en español."
+        ),
+        "en": (
+            "You are a classical poet. You rewrite the text on the same theme but in a "
+            "different poetic voice: formal and solemn register, traditional imagery, "
+            "elevated vocabulary. You keep the language and roughly the length. Do not "
+            "imitate the original's style. Reply only with the rewritten text, in English."
+        ),
+    },
 }
 
 USER_PROMPTS = {
-    "neutral": "Reescribe este texto en voz neutra y genérica:\n\n{text}",
-    "poetic": "Reescribe este texto con otra voz poética, formal y clásica:\n\n{text}",
+    "neutral": {
+        "es": "Reescribe este texto en voz neutra y genérica:\n\n{text}",
+        "en": "Rewrite this text in a neutral, generic voice:\n\n{text}",
+    },
+    "poetic": {
+        "es": "Reescribe este texto con otra voz poética, formal y clásica:\n\n{text}",
+        "en": "Rewrite this text in a different poetic voice, formal and classical:\n\n{text}",
+    },
 }
 
 
@@ -86,6 +114,7 @@ def rephrase(
     max_new_tokens: int,
     seed: int,
     output_path: Path,
+    max_retries: int = 3,
 ) -> int:
     device = _get_device()
     console.print(f"Loading [cyan]{model_name}[/] on {device} ...")
@@ -103,6 +132,7 @@ def rephrase(
         console.print(f"Resuming: {len(done)} positives already generated")
 
     written = 0
+    skipped_language = 0
     handle = output_path.open("a", encoding="utf-8")
     with Progress(
         SpinnerColumn(),
@@ -117,10 +147,11 @@ def rephrase(
                 progress.advance(task, per_positive)
                 continue
 
+            language = infer_language(text)
             prompt = tokenizer.apply_chat_template(
                 [
-                    {"role": "system", "content": SYSTEM_PROMPTS[variant]},
-                    {"role": "user", "content": USER_PROMPTS[variant].format(text=text)},
+                    {"role": "system", "content": SYSTEM_PROMPTS[variant][language]},
+                    {"role": "user", "content": USER_PROMPTS[variant][language].format(text=text)},
                 ],
                 tokenize=False,
                 add_generation_prompt=True,
@@ -128,18 +159,28 @@ def rephrase(
             encoded = tokenizer(prompt, return_tensors="pt").to(device)
 
             for repeat in range(per_positive):
-                with torch.no_grad():
-                    output = model.generate(
-                        **encoded,
-                        max_new_tokens=max_new_tokens,
-                        do_sample=True,
-                        temperature=temperature,
-                        top_p=0.9,
-                        pad_token_id=tokenizer.eos_token_id,
-                    )
-                generated = tokenizer.decode(
-                    output[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
-                ).strip()
+                generated = ""
+                for _ in range(max_retries):
+                    with torch.no_grad():
+                        output = model.generate(
+                            **encoded,
+                            max_new_tokens=max_new_tokens,
+                            do_sample=True,
+                            temperature=temperature,
+                            top_p=0.9,
+                            pad_token_id=tokenizer.eos_token_id,
+                        )
+                    candidate = tokenizer.decode(
+                        output[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
+                    ).strip()
+
+                    # a translated rewrite would teach the classifier the language,
+                    # not the voice, so keep only same-language rewrites
+                    if candidate and infer_language(candidate) == language:
+                        generated = candidate
+                        break
+                    if candidate:
+                        skipped_language += 1
 
                 if generated:
                     record = {
@@ -149,6 +190,7 @@ def rephrase(
                         "positive_index": index,
                         "variant": variant,
                         "repeat": repeat,
+                        "language": language,
                     }
                     # written per sample: a killed run keeps everything it produced
                     handle.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -157,6 +199,8 @@ def rephrase(
                 progress.advance(task)
 
     handle.close()
+    if skipped_language:
+        console.print(f"Discarded {skipped_language} rewrites that changed language")
     return written
 
 
