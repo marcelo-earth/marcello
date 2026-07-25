@@ -1,4 +1,4 @@
-.PHONY: install lint format test data classifier train eval push clean
+.PHONY: install lint format test data negatives classifier probe judge sft train eval human-eval push clean
 
 install:
 	pip install -e ".[dev]"
@@ -15,8 +15,23 @@ test:
 data:
 	python scripts/collect_data.py --config configs/data.yaml
 
+negatives:
+	python scripts/generate_negatives.py --model Qwen/Qwen2.5-1.5B-Instruct
+
 classifier:
 	python scripts/train_classifier.py --config configs/classifier.yaml
+
+# gate: must pass before spending compute on GRPO
+probe:
+	python scripts/sanity_probe.py --classifier outputs/classifier/best
+
+judge:
+	python scripts/train_classifier.py --config configs/classifier.yaml \
+		--resplit-seed 1337 \
+		--output-dir outputs/classifier/judge
+
+sft:
+	python scripts/train_sft.py --config configs/sft.yaml
 
 train:
 	python scripts/train_grpo.py --config configs/grpo.yaml
@@ -28,6 +43,9 @@ eval:
 		--format-prompts \
 		--output outputs/eval/latest.json
 
+human-eval:
+	python scripts/build_human_eval.py --generations outputs/eval/latest.json
+
 push:
 	python scripts/push_to_hub.py --all
 
@@ -35,4 +53,4 @@ push-dry:
 	python scripts/push_to_hub.py --all --dry-run
 
 clean:
-	rm -rf outputs/grpo outputs/classifier outputs/eval __pycache__ .pytest_cache
+	rm -rf outputs/grpo outputs/sft outputs/classifier outputs/eval __pycache__ .pytest_cache
