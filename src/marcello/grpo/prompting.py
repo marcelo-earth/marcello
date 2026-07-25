@@ -71,6 +71,29 @@ def _first_sentences(text: str, max_sentences: int = 2) -> str:
     return " ".join(selected)
 
 
+def split_seed_and_continuation(text: str, max_sentences: int = 2) -> tuple[str, str]:
+    """Split a sample into the seed shown to the model and what should follow.
+
+    Sentence splitting works for prose but not for the poems, which carry their
+    structure in line breaks and often end without punctuation. Those fall back
+    to a line-based split, otherwise the whole poem becomes the seed and there
+    is nothing left to continue.
+    """
+    text = text.strip()
+    seed = _first_sentences(text, max_sentences)
+    continuation = text[len(seed) :].strip() if text.startswith(seed) else ""
+
+    if continuation:
+        return seed, continuation
+
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) >= 2:
+        split_at = 1 if len(lines) <= 3 else 2
+        return "\n".join(lines[:split_at]).strip(), "\n".join(lines[split_at:]).strip()
+
+    return seed, ""
+
+
 def build_control_prompt(seed_text: str, style: str, language: str) -> str:
     """Build a prompt with explicit control tags for style and language."""
     normalized_style = style if style in {"poetic", "standard"} else "standard"
@@ -122,7 +145,7 @@ def extract_prompts_from_positive_dataset(dataset: Dataset, max_prompts: int = 5
             continue
 
         text = row["text"].strip()
-        seed_text = _first_sentences(text)
+        seed_text, _ = split_seed_and_continuation(text)
         if len(seed_text.split()) < 5:
             continue
 
