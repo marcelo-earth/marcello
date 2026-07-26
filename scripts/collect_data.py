@@ -100,9 +100,13 @@ def main():
 
         if out_cfg.get("length_match", True):
             balanced_indices = length_matched_indices(
-                texts, labels, seed=seed, num_bins=out_cfg.get("length_bins", 8)
+                texts,
+                labels,
+                seed=seed,
+                num_bins=out_cfg.get("length_bins", 8),
+                match_form=out_cfg.get("match_form", True),
             )
-            how = "balanced per length bin"
+            how = "balanced per surface stratum"
         else:
             balanced_indices = undersample_indices(labels, seed=seed)
             how = "balanced"

@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import statistics
 
-from marcello.data.balance import length_matched_indices, undersample_indices
+from marcello.data.balance import is_verse, length_matched_indices, undersample_indices
 
 
 def _text(words: int) -> str:
     return " ".join(["palabra"] * words)
+
+
+def _verse(words: int) -> str:
+    line = " ".join(["palabra"] * max(1, words // 4))
+    return "\n".join([line] * 4)
 
 
 def test_undersample_equalises_class_counts():
@@ -57,6 +62,36 @@ def test_length_matching_drops_bins_holding_one_class():
     kept_lengths = {len(texts[i].split()) for i in kept}
 
     assert 200 not in kept_lengths and 210 not in kept_lengths
+
+
+def test_is_verse_needs_several_hard_wrapped_lines():
+    assert is_verse("uno\ndos\ntres")
+    assert not is_verse("una sola linea de prosa corrida sin saltos")
+    assert not is_verse("uno\ndos")
+
+
+def test_form_matching_removes_the_verse_base_rate():
+    """Verse ran 60% Marcelo, so form alone predicted the label. It must not."""
+    texts = [_verse(30) for _ in range(60)] + [_text(30) for _ in range(40)]
+    texts += [_verse(30) for _ in range(20)] + [_text(30) for _ in range(80)]
+    labels = [1] * 100 + [0] * 100
+
+    kept = length_matched_indices(texts, labels, seed=0, match_form=True)
+    verse_labels = [labels[i] for i in kept if is_verse(texts[i])]
+
+    assert verse_labels, "verse should not be eliminated entirely"
+    assert sum(verse_labels) == len(verse_labels) // 2
+
+
+def test_form_matching_can_be_switched_off():
+    """Same lengths on both sides, so only the verse/prose split separates them."""
+    texts = [_verse(n) for n in range(20, 80)] + [_text(n) for n in range(20, 80)]
+    labels = [1] * 60 + [0] * 60
+
+    # matching on form sees one class per stratum and keeps nothing
+    assert not length_matched_indices(texts, labels, seed=0, match_form=True)
+    # ignoring it, the length bins are mixed and the shortcut survives
+    assert length_matched_indices(texts, labels, seed=0, match_form=False)
 
 
 def test_length_matching_is_deterministic_for_a_seed():

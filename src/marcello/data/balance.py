@@ -11,6 +11,11 @@ Length matching fixes the cause instead of the symptom. Texts are binned by
 word count and each bin is trimmed until it holds as many positives as
 negatives, so word count carries no information about the label and the head
 has to read the text.
+
+Length was not the only such cue. Language and verse-versus-prose are just as
+visible without reading, and Spanish verse ran 113 positives against 74
+negatives, so form alone made a poem 60% likely to be Marcelo. The balancer
+therefore strata on all three surface features together.
 """
 
 from __future__ import annotations
@@ -38,30 +43,64 @@ def _bin_of(count: int, edges: list[int]) -> int:
     return index
 
 
+def is_verse(text: str) -> bool:
+    """Verse is the shape, not the content: several short hard-wrapped lines."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    return len(lines) >= 3
+
+
+def _surface_strata(texts: list[str], num_bins: int) -> list[tuple]:
+    """The surface features a classifier can exploit without reading anything.
+
+    Length, language and verse-versus-prose are all visible before a single
+    word is understood. Whenever one of them correlates with the label the
+    head will take it, so each has to be balanced away rather than trusted.
+    """
+    from marcello.grpo.prompting import infer_language
+
+    counts = [_word_count(text) for text in texts]
+    edges = _bin_edges(counts, num_bins)
+
+    return [
+        (_bin_of(count, edges), infer_language(text), is_verse(text))
+        for text, count in zip(texts, counts)
+    ]
+
+
 def length_matched_indices(
     texts: list[str],
     labels: list[int],
     seed: int = 42,
     num_bins: int = 8,
+    match_form: bool = True,
 ) -> list[int]:
-    """Indices of a subset where each length bin is class balanced.
+    """Indices of a subset where every surface stratum is class balanced.
 
-    Returns positions into `texts`, sorted. Bins holding only one class drop
-    out entirely: a length only one class ever reaches is a giveaway, so there
-    is nothing to learn there that would generalise.
+    Returns positions into `texts`, sorted. Strata holding only one class drop
+    out entirely: a length or a form only one class ever reaches is a giveaway,
+    so there is nothing there that would generalise.
+
+    With `match_form`, language and verse-versus-prose join word count as
+    strata. Length alone was not enough: Spanish verse ran 113 positives to 74
+    negatives, a 60% base rate for Marcelo that the probe read back almost
+    exactly as Becquer's 0.61.
     """
     counts = [_word_count(text) for text in texts]
-    edges = _bin_edges(counts, num_bins)
+    if match_form:
+        strata = _surface_strata(texts, num_bins)
+    else:
+        edges = _bin_edges(counts, num_bins)
+        strata = [(_bin_of(count, edges),) for count in counts]
 
-    buckets: dict[tuple[int, int], list[int]] = {}
-    for index, (count, label) in enumerate(zip(counts, labels)):
-        buckets.setdefault((_bin_of(count, edges), label), []).append(index)
+    buckets: dict[tuple, list[int]] = {}
+    for index, (stratum, label) in enumerate(zip(strata, labels)):
+        buckets.setdefault((stratum, label), []).append(index)
 
     rng = random.Random(seed)
     kept: list[int] = []
-    for bin_index in {key[0] for key in buckets}:
-        positives = buckets.get((bin_index, 1), [])
-        negatives = buckets.get((bin_index, 0), [])
+    for stratum in sorted({key[0] for key in buckets}, key=repr):
+        positives = buckets.get((stratum, 1), [])
+        negatives = buckets.get((stratum, 0), [])
         keep = min(len(positives), len(negatives))
         if not keep:
             continue
