@@ -9,6 +9,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
+from marcello.data.balance import length_matched_indices, undersample_indices
 from marcello.data.collector import WritingSampleCollector
 from marcello.data.negative_sampler import NegativeSampler, NegativeStrategy
 from marcello.data.processor import TextProcessor
@@ -90,24 +91,27 @@ def main():
         console.print(f"    negatives from {source}: [green]{count}[/]")
     console.print(f"  Contrastive dataset: [green]{len(contrastive_dataset)}[/] total samples\n")
 
-    # --- Balance classes by undersampling the majority ---
-    import random as _random
-
+    # --- Balance classes ---
     out_cfg = config.get("output", {})
     if out_cfg.get("balance_classes", True):
-        pos_indices = [i for i, lbl in enumerate(contrastive_dataset["label"]) if lbl == 1]
-        neg_indices = [i for i, lbl in enumerate(contrastive_dataset["label"]) if lbl == 0]
-        minority = min(len(pos_indices), len(neg_indices))
-        rng = _random.Random(out_cfg.get("seed", 42))
-        if len(pos_indices) > minority:
-            pos_indices = rng.sample(pos_indices, minority)
+        texts = list(contrastive_dataset["text"])
+        labels = list(contrastive_dataset["label"])
+        seed = out_cfg.get("seed", 42)
+
+        if out_cfg.get("length_match", True):
+            balanced_indices = length_matched_indices(
+                texts, labels, seed=seed, num_bins=out_cfg.get("length_bins", 8)
+            )
+            how = "balanced per length bin"
         else:
-            neg_indices = rng.sample(neg_indices, minority)
-        balanced_indices = sorted(pos_indices + neg_indices)
+            balanced_indices = undersample_indices(labels, seed=seed)
+            how = "balanced"
+
         contrastive_dataset = contrastive_dataset.select(balanced_indices)
+        kept = len(balanced_indices) // 2
         console.print(
-            f"  Balanced to [green]{len(contrastive_dataset)}[/] samples "
-            f"({minority} pos + {minority} neg)\n"
+            f"  {how.capitalize()} to [green]{len(contrastive_dataset)}[/] samples "
+            f"({kept} pos + {kept} neg)\n"
         )
 
     # --- Split and Save ---
