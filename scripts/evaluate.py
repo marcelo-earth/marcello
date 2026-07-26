@@ -93,8 +93,7 @@ def main():
         type=str,
         default=None,
         help=(
-            "Path to a second independent classifier used only for evaluation, "
-            "never for training"
+            "Path to a second independent classifier used only for evaluation, never for training"
         ),
     )
     parser.add_argument(
@@ -169,6 +168,7 @@ def main():
     if args.reward_config:
         console.print("\n[bold]Computing per-component reward breakdown...[/]")
         from marcello.grpo.reward import StyleReward
+
         with open(args.reward_config) as f:
             rcfg = yaml.safe_load(f)
         rw_cfg = rcfg.get("reward", rcfg)

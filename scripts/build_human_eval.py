@@ -101,9 +101,7 @@ def main():
         "generations_file": args.generations,
         "field": args.field,
         "seed": args.seed,
-        "answers": [
-            {"index": i + 1, "source": item["source"]} for i, item in enumerate(items)
-        ],
+        "answers": [{"index": i + 1, "source": item["source"]} for i, item in enumerate(items)],
     }
     key_path = Path(args.key_output)
     key_path.write_text(json.dumps(key, indent=2, ensure_ascii=False), encoding="utf-8")

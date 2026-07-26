@@ -111,9 +111,7 @@ def collate_fn(batch, tokenizer, max_length: int):
 
     padded_input_ids = [ids + [pad_id] * (longest - len(ids)) for ids in input_ids_batch]
     attention_mask = [[1] * len(ids) + [0] * (longest - len(ids)) for ids in input_ids_batch]
-    padded_labels = [
-        lbl + [LABEL_IGNORE_INDEX] * (longest - len(lbl)) for lbl in labels_batch
-    ]
+    padded_labels = [lbl + [LABEL_IGNORE_INDEX] * (longest - len(lbl)) for lbl in labels_batch]
 
     return {
         "input_ids": torch.tensor(padded_input_ids),

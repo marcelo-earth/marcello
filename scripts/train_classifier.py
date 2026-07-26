@@ -31,8 +31,7 @@ def _run_cross_validation(
     fold_accuracies = []
 
     console.print(
-        f"\n[bold]Running {k}-fold stratified cross-validation "
-        f"({len(full_dataset)} samples)[/]\n"
+        f"\n[bold]Running {k}-fold stratified cross-validation ({len(full_dataset)} samples)[/]\n"
     )
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(indices, labels), start=1):
@@ -68,7 +67,7 @@ def _run_cross_validation(
 
     mean_acc = sum(fold_accuracies) / k
     variance = sum((a - mean_acc) ** 2 for a in fold_accuracies) / k
-    std_acc = variance ** 0.5
+    std_acc = variance**0.5
 
     table = Table(title=f"{k}-Fold CV Results", show_lines=False)
     table.add_column("Fold", style="cyan")

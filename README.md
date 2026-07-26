@@ -148,7 +148,9 @@ To use the pre-trained models directly:
 from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer
 
 # Style classifier
-classifier = AutoModelForSequenceClassification.from_pretrained("marcelo-earth/marcello-style-classifier")
+classifier = AutoModelForSequenceClassification.from_pretrained(
+    "marcelo-earth/marcello-style-classifier"
+)
 
 # Fine-tuned LLM
 model = AutoModelForCausalLM.from_pretrained("marcelo-earth/marcello-qwen2.5-1.5b-grpo")

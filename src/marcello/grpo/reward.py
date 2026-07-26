@@ -220,16 +220,18 @@ class StyleReward:
             reward = max(self.min_reward, min(self.max_reward, reward))
 
             if return_breakdown:
-                results.append({
-                    "total": reward,
-                    "raw_style_prob": prob,
-                    "style_score": style_component,
-                    "length_bonus": length_component,
-                    "prompt_relevance": relevance_component,
-                    "repetition_penalty": repetition_component,
-                    "prompt_echo_penalty": echo_component,
-                    "reference_copy_penalty": refcopy_component,
-                })
+                results.append(
+                    {
+                        "total": reward,
+                        "raw_style_prob": prob,
+                        "style_score": style_component,
+                        "length_bonus": length_component,
+                        "prompt_relevance": relevance_component,
+                        "repetition_penalty": repetition_component,
+                        "prompt_echo_penalty": echo_component,
+                        "reference_copy_penalty": refcopy_component,
+                    }
+                )
             else:
                 results.append(reward)
 

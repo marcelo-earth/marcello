@@ -92,6 +92,7 @@ def main():
 
     # --- Balance classes by undersampling the majority ---
     import random as _random
+
     out_cfg = config.get("output", {})
     if out_cfg.get("balance_classes", True):
         pos_indices = [i for i, lbl in enumerate(contrastive_dataset["label"]) if lbl == 1]
@@ -115,6 +116,7 @@ def main():
 
     # cast label to ClassLabel so train_test_split can stratify
     from datasets import ClassLabel
+
     contrastive_dataset = contrastive_dataset.cast_column(
         "label", ClassLabel(names=["generic", "marcelo"])
     )
