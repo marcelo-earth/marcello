@@ -5,52 +5,71 @@ stands and what the measurements said. Update it after every run.
 
 ## Step 1 — Classifier sanity probe
 
-**Status: done, and it failed.**
+**Status: still failing, but down to 2 texts from 11.**
 
 `python scripts/sanity_probe.py` scores out-of-distribution texts against the
 trained classifier: encyclopedic prose, public-domain poetry (Bécquer, Darío),
 generic LLM prose, English tech blogs, German and Italian. Held-out real
 samples are the control.
 
-Result on `outputs/classifier/best` (2026-07-24):
+Every fix so far came from finding a feature that separates the classes
+without anyone reading the text. Four rounds:
 
-| group | mean P(Marcelo) |
-|---|---|
-| out-of-distribution (11 texts) | 0.734 |
-| held-out real samples (6 texts) | 0.671 |
+| run | mean OOD | max OOD | control | margin | failures |
+|---|---|---|---|---|---|
+| original corpus | 0.734 | — | 0.671 | **−0.063** | 11 of 11 |
+| content-matched negatives | 0.380 | 0.774 | 0.674 | +0.293 | 5 |
+| length-matched balancing | 0.254 | 0.722 | 0.599 | +0.345 | 2 |
+| form-matched balancing | 0.276 | 0.532 | 0.681 | **+0.405** | 2 |
 
-Every OOD text scored above the 0.4 threshold, and the separation margin is
-**negative**: unrelated Spanish prose scores *higher* than real writing. The
-classifier is unusable as a reward signal, so no GRPO run based on it means
-anything.
+Still above threshold: Darío 0.5324 and one Spanish news text at 0.4167.
+Bécquer went 0.750 → 0.611 → 0.276 and now passes.
 
-Two independent causes, both now addressed:
+**Gate: the probe must pass before any GRPO run.**
+
+### The shortcuts found so far
+
+Four causes, all measured rather than guessed at:
 
 1. **The training loop could not fit the data.** Frozen DeBERTa features plus
    logistic regression separate this corpus at AUC 1.000 (`scripts/compare_backbones.py`),
    yet the trained head reached AUC 0.335 and collapsed to a constant. Fixed by
    normalizing the pooled features and keeping a fully frozen encoder in eval
    mode (commit `09da361`).
-2. **The corpus itself is separable for the wrong reason.** Positives are short
-   poems and posts, negatives are Wikipedia-style prose: topic, register and
-   length all differ, so any classifier learns topic detection. Fixed by
-   generating content-matched negatives (`scripts/generate_negatives.py`).
+2. **The corpus was separable by topic and register.** Positives were poems and
+   posts, negatives were Wikipedia-style prose, so any classifier learns topic
+   detection. Fixed by generating content-matched negatives
+   (`scripts/generate_negatives.py`).
+3. **Length.** Negatives ran 44 words at the median against the positives' 34.
+   Score correlated with word count at −0.341 across the corpus and −0.394
+   *within the negatives alone*, so short text scored as Marcelo whatever it
+   said. That is what the four-line probe poems were reading. Fixed by binning
+   on word count and balancing each bin (`src/marcello/data/balance.py`).
+4. **Verse form and language.** Spanish verse held 113 positives to 74
+   negatives, a 60% base rate for Marcelo from the shape of the text alone.
+   Bécquer came back at 0.611, which is that base rate almost exactly. Fixed by
+   adding 85 Spanish verse negatives and making the balancer stratify on
+   (length bin, language, verse) together. Every surface cell is now equal:
+   112/112 English prose, 22/22 Spanish prose, 119/119 Spanish verse.
 
-Backbone comparison, 5-fold CV on frozen features. On the old corpus every
-backbone was near-perfect, which is itself the evidence that the corpus was too
-easy. On the rebuilt corpus the same measurement drops to a believable range:
+The pattern across all four: whenever a feature visible *without reading the
+text* correlates with the label, the head takes it. Balancing that feature away
+is the fix, and the probe is what makes the next one visible.
 
-| backbone | accuracy (old) | AUC (old) | accuracy (new) | AUC (new) |
+### Cost of removing the shortcuts
+
+Val metrics dropped every time a shortcut was removed, which is the point:
+
+| corpus | samples | val accuracy | AUC-ROC | F1 |
 |---|---|---|---|---|
-| microsoft/deberta-v3-small | 0.989 | 1.000 | 0.847 ± 0.004 | 0.919 ± 0.006 |
-| FacebookAI/xlm-roberta-base | 0.989 | 0.999 | 0.813 ± 0.013 | 0.902 ± 0.013 |
-| intfloat/multilingual-e5-small | 0.978 | 0.996 | 0.780 ± 0.033 | 0.869 ± 0.031 |
-| paraphrase-multilingual-MiniLM-L12-v2 | 0.961 | 0.993 | not rerun | not rerun |
+| content-matched | 536 | 0.9012 | 0.9476 | 0.9091 |
+| length-matched | 510 | 0.8701 | 0.9170 | 0.8750 |
+| form-matched | 506 | 0.7500 | 0.8269 | 0.7467 |
 
-That 0.919 is the ceiling a frozen-encoder head can reach, and the number the
-trained classifier has to be judged against.
-
-**Gate: the probe must pass before any GRPO run.**
+0.75 on a task with no shortcuts left is worth more than 0.90 on one where
+counting words was enough. The open question is whether 0.827 is near the
+ceiling for a frozen encoder on this corpus or whether the head is
+underfitting; `scripts/compare_backbones.py` measures that ceiling.
 
 ## Step 2 — Independent evaluation infrastructure
 
@@ -65,13 +84,11 @@ trained classifier has to be judged against.
 
 ## Step 3 — Grow and fix the corpus
 
-**Status: done. 536 samples, 268 per class.**
+**Status: done. 506 samples, 253 per class, every surface cell matched.**
 
-The collector yields 297 paragraph-level positives, but class balancing used to
-discard down to whatever the negative pool could match — 90. With 268 negatives
-the corpus is now 455 train / 81 val.
-
-Negative pool (`scripts/generate_negatives.py`, Qwen2.5-1.5B-Instruct):
+The collector yields 297 paragraph-level positives. The negative pool is now
+405, and balancing keeps 253 of each after matching on length, language and
+form.
 
 | source | count | what it forces |
 |---|---|---|
@@ -79,25 +96,35 @@ Negative pool (`scripts/generate_negatives.py`, Qwen2.5-1.5B-Instruct):
 | Wikipedia | 21 | encyclopedic register |
 | neutral rewrites | 89 | same content and language, voice stripped |
 | poetic rewrites | 89 | another poetic voice on the same theme |
+| curated Spanish verse | 85 | classical and modernist verse that is not his |
+| English blog prose | 28 | first-person tech writing, the failing register |
+| German/Italian/French/Portuguese | 24 | languages he does not write |
 
-Two spurious signals found and removed while building this:
+The last three were added because the probe named them. English tech blogging
+went 0.53/0.45 → 0.26/0.20 and German 0.58 → 0.23 once the pool contained any.
 
-- **Language drift.** A Spanish system prompt made the model translate the
-  English samples: 39 of the first 90 negatives came back in Spanish, which
-  would have taught the classifier "English means Marcelo". Prompts are now
-  chosen per source language, and a rewrite that changes language is retried
-  and then discarded. Both sets: 0 mismatches.
-- **Poetry as a proxy.** Most positives are poems, so prose-only negatives let
-  "poetry" stand in for "Marcelo". The poetic variant closes that gap.
+Rules that came out of building this:
+
+- **Never let a rewrite change language.** A Spanish system prompt made the
+  model translate the English samples: 39 of the first 90 negatives came back
+  in Spanish, which would have taught "English means Marcelo". Prompts are now
+  per source language, and a rewrite that changes language is retried and
+  discarded.
+- **Bécquer and Darío are reserved for the probe.** No negative may use them,
+  or the probe stops measuring generalisation. The curated verse uses Góngora,
+  Quevedo, Sor Juana, Machado, Manrique, Garcilaso, Hernández and Lorca.
+- **Match the surface before trusting the score.** See Step 1.
 
 Open risks:
 
-- The poetic negatives run long (median 53 words against the positives' 33.5),
-  so length is the cue still worth watching. Length-matched sampling is the fix
-  if the probe shows the classifier leaning on it.
 - Rewrites carry grammar errors from a 1.5B model; the classifier could learn
   "awkward phrasing = negative". A larger rephraser on a GPU would be better.
-- Qwen2.5-3B-Instruct stalled mid-download, hence 1.5B.
+  Qwen2.5-3B-Instruct stalled mid-download, hence 1.5B.
+- Roughly half the curated verse is written for the purpose rather than quoted.
+  It fills the form cell honestly, but it is one author's idea of a classical
+  register, not a sample of one.
+- 253 per class is small. Every metric here carries a wide interval and the
+  val split is 76 texts.
 
 ## Step 4 — SFT baseline
 
