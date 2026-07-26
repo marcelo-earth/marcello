@@ -62,8 +62,18 @@ def main():
         help="An OOD text scoring above this fails the probe (default: 0.4)",
     )
     parser.add_argument("--max-controls", type=int, default=6)
-    parser.add_argument("--output", type=str, default="outputs/classifier/sanity_probe.json")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Defaults to sanity_probe.json beside the classifier being probed",
+    )
     args = parser.parse_args()
+
+    # One fixed path meant probing the judge silently overwrote the reward
+    # model's report, leaving no record of which model the gate was opened on.
+    if args.output is None:
+        args.output = str(Path(args.classifier).parent / "sanity_probe.json")
 
     console.print("\n[bold]MarceLLo Classifier Sanity Probe[/]\n")
 
