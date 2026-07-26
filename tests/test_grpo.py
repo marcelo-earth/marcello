@@ -156,12 +156,18 @@ def test_set_feature_stats_standardises_the_training_features():
     model.register_buffer("feature_mean", torch.zeros(4))
     model.register_buffer("feature_std", torch.ones(4))
 
+    torch.manual_seed(0)
     features = torch.randn(64, 4) * torch.tensor([100.0, 1.0, 0.01, 5.0]) + 7.0
     with torch.no_grad():
         model.set_feature_stats(features)
 
     scaled = (features - model.feature_mean) / model.feature_std
-    assert torch.allclose(scaled.mean(dim=0), torch.zeros(4), atol=1e-5)
+
+    # The 0.01-scale dimension sits on an offset of 7, so subtracting the mean
+    # cancels away most of its float32 precision and dividing by 0.01 puts the
+    # remainder back. Residual mean lands around 1e-4; that is the arithmetic,
+    # not the standardiser. The point of the test is the spread.
+    assert torch.allclose(scaled.mean(dim=0), torch.zeros(4), atol=1e-3)
     assert torch.allclose(scaled.std(dim=0), torch.ones(4), atol=1e-5)
 
 
