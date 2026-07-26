@@ -96,7 +96,7 @@ def _forward(model: StyleClassifier, inputs) -> dict[str, torch.Tensor]:
     if isinstance(inputs, dict):
         return model(**inputs)
 
-    logits = model.classifier(inputs).squeeze(-1)
+    logits = model.head(inputs)
     return {"logits": logits, "probs": torch.sigmoid(logits)}
 
 
@@ -163,6 +163,11 @@ def train_classifier(
     if encoder_is_frozen:
         train_source = _cache_features(model, train_loader, device)
         val_source = _cache_features(model, val_loader, device)
+        # Fit on train only. Standardising with statistics that saw the
+        # validation set would leak, and the buffers ship inside the checkpoint
+        # so inference applies exactly the scaling training used.
+        with torch.no_grad():
+            model.set_feature_stats(train_source[0])
 
     with Progress(
         SpinnerColumn(),

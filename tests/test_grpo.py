@@ -110,6 +110,8 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
         self.head_norm = head_norm
         self.encoder = type("Encoder", (), {"config": type("Cfg", (), {"hidden_size": 4})()})()
         self.classifier = torch.nn.Sequential(torch.nn.Dropout(dropout), torch.nn.Linear(4, 1))
+        self.register_buffer("feature_mean", torch.zeros(4))
+        self.register_buffer("feature_std", torch.ones(4))
         self.tokenizer = object()
 
     monkeypatch.setattr(StyleClassifier, "__init__", fake_init)
@@ -128,6 +130,56 @@ def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
 
     # checkpoints saved before head_norm existed must load with it disabled
     assert captured["args"] == ("tiny-test-model", 0.25, 2, False)
+
+
+def test_classifier_from_pretrained_without_feature_stats_is_identity(tmp_path):
+    """Old checkpoints lack the standardiser and must score exactly as before."""
+    from marcello.classifier.model import StyleClassifier
+
+    model = StyleClassifier.__new__(StyleClassifier)
+    torch.nn.Module.__init__(model)
+    model.register_buffer("feature_mean", torch.zeros(4))
+    model.register_buffer("feature_std", torch.ones(4))
+    model.classifier = torch.nn.Sequential(torch.nn.Linear(4, 1))
+
+    pooled = torch.randn(3, 4)
+    expected = model.classifier(pooled).squeeze(-1)
+
+    assert torch.allclose(model.head(pooled), expected)
+
+
+def test_set_feature_stats_standardises_the_training_features():
+    from marcello.classifier.model import StyleClassifier
+
+    model = StyleClassifier.__new__(StyleClassifier)
+    torch.nn.Module.__init__(model)
+    model.register_buffer("feature_mean", torch.zeros(4))
+    model.register_buffer("feature_std", torch.ones(4))
+
+    features = torch.randn(64, 4) * torch.tensor([100.0, 1.0, 0.01, 5.0]) + 7.0
+    with torch.no_grad():
+        model.set_feature_stats(features)
+
+    scaled = (features - model.feature_mean) / model.feature_std
+    assert torch.allclose(scaled.mean(dim=0), torch.zeros(4), atol=1e-5)
+    assert torch.allclose(scaled.std(dim=0), torch.ones(4), atol=1e-5)
+
+
+def test_set_feature_stats_survives_a_constant_dimension():
+    """A dimension that never varies must not be amplified into noise."""
+    from marcello.classifier.model import StyleClassifier
+
+    model = StyleClassifier.__new__(StyleClassifier)
+    torch.nn.Module.__init__(model)
+    model.register_buffer("feature_mean", torch.zeros(2))
+    model.register_buffer("feature_std", torch.ones(2))
+
+    features = torch.stack([torch.randn(32), torch.full((32,), 3.0)], dim=1)
+    with torch.no_grad():
+        model.set_feature_stats(features)
+
+    scaled = (features - model.feature_mean) / model.feature_std
+    assert torch.isfinite(scaled).all()
 
 
 def test_style_reward_defaults_match_grpo_yaml(monkeypatch):

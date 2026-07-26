@@ -48,6 +48,17 @@ class StyleClassifier(nn.Module):
         head_layers += [nn.Dropout(dropout), nn.Linear(hidden_size, 1)]
         self.classifier = nn.Sequential(*head_layers)
 
+        # LayerNorm normalises each sample across its own dimensions, which is
+        # not the same thing as putting the dimensions on a common scale: a
+        # dimension that varies wildly across the corpus still dominates the
+        # linear layer afterwards. Logistic regression on these very features
+        # standardises per dimension and reached AUC 0.903 where the trained
+        # head reached 0.827 on the same split. These buffers close that gap.
+        # They stay at 0/1 until `set_feature_stats` fills them from the
+        # training set, so an unfitted model behaves exactly as before.
+        self.register_buffer("feature_mean", torch.zeros(hidden_size))
+        self.register_buffer("feature_std", torch.ones(hidden_size))
+
         # DeBERTa-v3 shares the embedding with the MLM head; updating it during
         # downstream fine-tuning destabilises training and produces NaN weights
         # after a single AdamW step. Freeze it as the DeBERTa-v3 paper recommends.
@@ -77,6 +88,18 @@ class StyleClassifier(nn.Module):
         sum_mask = mask_expanded.sum(dim=1).clamp(min=1e-9)
         return sum_embeddings / sum_mask
 
+    def set_feature_stats(self, features: torch.Tensor) -> None:
+        """Fit the per-dimension standardiser on pooled training features."""
+        self.feature_mean.copy_(features.mean(dim=0))
+        # a dimension that never varies carries no information; clamping stops
+        # it from being amplified into noise rather than dropped
+        self.feature_std.copy_(features.std(dim=0).clamp(min=1e-6))
+
+    def head(self, pooled: torch.Tensor) -> torch.Tensor:
+        """Standardise pooled features, then score them. Returns logits."""
+        standardised = (pooled - self.feature_mean) / self.feature_std
+        return self.classifier(standardised).squeeze(-1)
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -92,7 +115,7 @@ class StyleClassifier(nn.Module):
         """
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
         pooled = self.mean_pool(outputs.last_hidden_state, attention_mask)
-        logits = self.classifier(pooled).squeeze(-1)
+        logits = self.head(pooled)
         probs = torch.sigmoid(logits)
 
         result = {"logits": logits, "probs": probs}
@@ -139,6 +162,11 @@ class StyleClassifier(nn.Module):
             head_norm=config.get("head_norm", False),
         )
         state_dict = torch.load(load_path / "model.pt", map_location="cpu", weights_only=True)
+        # checkpoints written before per-dimension standardisation existed have
+        # no such buffers; the identity values reproduce their old behaviour
+        hidden_size = model.encoder.config.hidden_size
+        state_dict.setdefault("feature_mean", torch.zeros(hidden_size))
+        state_dict.setdefault("feature_std", torch.ones(hidden_size))
         model.load_state_dict(state_dict)
         return model
 
