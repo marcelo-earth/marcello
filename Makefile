@@ -3,8 +3,10 @@
 install:
 	pip install -e ".[dev]"
 
+# mirrors the CI lint job: a green `make lint` has to mean a green CI
 lint:
 	ruff check .
+	ruff format --check .
 
 format:
 	ruff format .
