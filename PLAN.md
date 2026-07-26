@@ -5,31 +5,36 @@ stands and what the measurements said. Update it after every run.
 
 ## Step 1 — Classifier sanity probe
 
-**Status: still failing, but down to 2 texts from 11.**
+**Status: PASSED on 2026-07-26. The gate is open.**
 
 `python scripts/sanity_probe.py` scores out-of-distribution texts against the
 trained classifier: encyclopedic prose, public-domain poetry (Bécquer, Darío),
 generic LLM prose, English tech blogs, German and Italian. Held-out real
 samples are the control.
 
-Every fix so far came from finding a feature that separates the classes
-without anyone reading the text. Four rounds:
+Every fix came from finding something that separates the classes without
+anyone reading the text. Five rounds:
 
 | run | mean OOD | max OOD | control | margin | failures |
 |---|---|---|---|---|---|
 | original corpus | 0.734 | — | 0.671 | **−0.063** | 11 of 11 |
 | content-matched negatives | 0.380 | 0.774 | 0.674 | +0.293 | 5 |
 | length-matched balancing | 0.254 | 0.722 | 0.599 | +0.345 | 2 |
-| form-matched balancing | 0.276 | 0.532 | 0.681 | **+0.405** | 2 |
+| form-matched balancing | 0.276 | 0.532 | 0.681 | +0.405 | 2 |
+| per-dimension standardisation | 0.155 | 0.392 | 0.824 | **+0.669** | **0** |
 
-Still above threshold: Darío 0.5324 and one Spanish news text at 0.4167.
-Bécquer went 0.750 → 0.611 → 0.276 and now passes.
+Bécquer went 0.750 → 0.611 → 0.276 → **0.053**, Darío 0.774 → **0.241**.
 
-**Gate: the probe must pass before any GRPO run.**
+Thin margin worth watching: the Italian probe sits at 0.3918 against a 0.4
+threshold. It is the one text that would flip the gate, and there are only 24
+non-Spanish non-English negatives holding it down.
 
-### The shortcuts found so far
+**Gate: the probe must pass before any GRPO run. Re-run it after any change to
+the corpus or the classifier, not just once.**
 
-Four causes, all measured rather than guessed at:
+### The shortcuts found
+
+Five causes, all measured rather than guessed at:
 
 1. **The training loop could not fit the data.** Frozen DeBERTa features plus
    logistic regression separate this corpus at AUC 1.000 (`scripts/compare_backbones.py`),
@@ -52,24 +57,54 @@ Four causes, all measured rather than guessed at:
    (length bin, language, verse) together. Every surface cell is now equal:
    112/112 English prose, 22/22 Spanish prose, 119/119 Spanish verse.
 
-The pattern across all four: whenever a feature visible *without reading the
-text* correlates with the label, the head takes it. Balancing that feature away
-is the fix, and the probe is what makes the next one visible.
+5. **The head was not reading the features it was given.** Nothing to do with
+   the corpus. LayerNorm normalises each sample across its own 768 dimensions,
+   which is not the same as putting the dimensions on a common scale across the
+   corpus, so a high-variance dimension still dominated the linear layer. On the
+   identical split, logistic regression on the same frozen features reached AUC
+   0.903 against the head's 0.827, and was flat across C from 0.01 to 10, so it
+   was never regularisation strength. Fixed by fitting a per-dimension mean and
+   std on the cached training features and shipping them as buffers.
+
+The pattern across the first four: whenever something visible *without reading
+the text* correlates with the label, the head takes it. Balancing it away is the
+fix, and the probe is what makes the next one visible. The fifth is the mirror
+image, and worth remembering separately: the corpus can be clean and the
+classifier still fail, so measure the ceiling before blaming the data.
 
 ### Cost of removing the shortcuts
 
-Val metrics dropped every time a shortcut was removed, which is the point:
+Val metrics dropped every time a shortcut was removed, which is the point, then
+recovered once the head could actually use the features:
 
 | corpus | samples | val accuracy | AUC-ROC | F1 |
 |---|---|---|---|---|
 | content-matched | 536 | 0.9012 | 0.9476 | 0.9091 |
 | length-matched | 510 | 0.8701 | 0.9170 | 0.8750 |
 | form-matched | 506 | 0.7500 | 0.8269 | 0.7467 |
+| form-matched + standardised | 506 | **0.8026** | **0.8878** | **0.8101** |
 
-0.75 on a task with no shortcuts left is worth more than 0.90 on one where
-counting words was enough. The open question is whether 0.827 is near the
-ceiling for a frozen encoder on this corpus or whether the head is
-underfitting; `scripts/compare_backbones.py` measures that ceiling.
+0.80 on a task with no shortcuts left is worth more than 0.90 on one where
+counting words was enough.
+
+### The ceiling
+
+`scripts/compare_backbones.py`, 5-fold CV on frozen features, 506 samples. This
+is what a frozen-encoder head can reach, and the number to judge training
+against:
+
+| backbone | accuracy | AUC |
+|---|---|---|
+| microsoft/deberta-v3-small | 0.820 ± 0.034 | 0.885 ± 0.030 |
+| FacebookAI/xlm-roberta-base | 0.793 ± 0.033 | 0.884 ± 0.027 |
+| intfloat/multilingual-e5-small | 0.779 ± 0.037 | 0.864 ± 0.029 |
+| paraphrase-multilingual-MiniLM-L12-v2 | 0.709 ± 0.048 | 0.807 ± 0.049 |
+
+The trained classifier is at 0.8026 / 0.8878, so it now sits at that ceiling and
+there is nothing left to win from the head alone. Note that deberta-v3-small
+still wins on a corpus that is over half Spanish, despite being English-only
+pretrained; the multilingual backbones did not overtake it once the task got
+hard, which is the opposite of what I expected before measuring.
 
 ## Step 2 — Independent evaluation infrastructure
 
@@ -135,7 +170,8 @@ Open risks:
 
 ## Step 5 — GRPO from base
 
-Blocked on Step 1 passing.
+**Unblocked.** Step 1 passed on 2026-07-26, so a run from here means something.
+Re-run the probe against whatever classifier the run actually uses first.
 
 ## Step 6 — GRPO from the SFT checkpoint
 
