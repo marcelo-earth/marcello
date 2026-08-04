@@ -107,10 +107,20 @@ class StyleReward:
         return ngrams
 
     def _length_bonus(self, text: str) -> float:
-        """Small bonus for outputs near target length. Prevents degenerate short/long outputs."""
-        length = len(text.split())
+        """Reward based on token length, not word count.
+        Aligns with MODEL_CARD.md and makes target reachable within max_new_tokens.
+        """
+        # Tokenize using the model's tokenizer for accurate length measurement.
+        # Fallback to simple split if tokenizer not available.
+        try:
+            # Assume tokenizer attribute set during init (self.tokenizer)
+            tokens = self.tokenizer.encode(text, add_special_tokens=False)
+        except Exception:
+            tokens = len(text.split())
+        length = len(tokens)
         diff = abs(length - self.target_length) / self.target_length
         return max(0.0, 1.0 - diff)
+
 
     def _temperature_scale(self, prob: float) -> float:
         """Apply temperature scaling to a probability in a numerically stable way."""
