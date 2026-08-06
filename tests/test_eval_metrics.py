@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from marcello.eval.metrics import distinct_n, length_stats, style_score
+from marcello.eval.metrics import compute_style_metrics, distinct_n, length_stats, style_score
 
 
 class FakeClassifier:
@@ -70,3 +70,21 @@ def test_style_score_uniform():
     assert result["style_score_std"] == 0.0
     assert result["style_score_min"] == 0.6
     assert result["style_score_max"] == 0.6
+
+
+def test_style_score_empty_returns_no_metrics():
+    """An empty list arrives after generation is already paid for, so it must not crash."""
+    assert style_score([], FakeClassifier()) == {}
+
+
+def test_length_stats_empty_returns_no_metrics():
+    assert length_stats([]) == {}
+
+
+def test_compute_style_metrics_empty_omits_the_undefined_keys():
+    metrics = compute_style_metrics([], classifier=FakeClassifier())
+
+    # distinct-n is defined at zero n-grams, the rest are not
+    assert metrics == {"distinct_1": 0.0, "distinct_2": 0.0}
+    for key in ("style_score_mean", "avg_words", "min_words", "max_words"):
+        assert key not in metrics

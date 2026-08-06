@@ -16,8 +16,13 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 def style_score(texts: list[str], classifier) -> dict:
     """Compute style score using the trained classifier.
 
-    Returns mean, std, min, max of classifier probabilities.
+    Returns mean, std, min, max of classifier probabilities. An empty list has no
+    style score, so it returns {} rather than crashing after generation has already
+    been paid for. Callers skip missing keys.
     """
+    if not texts:
+        return {}
+
     probs = classifier.predict(texts)
     mean = sum(probs) / len(probs)
     return {
@@ -77,7 +82,10 @@ def perplexity(
 
 
 def length_stats(texts: list[str]) -> dict:
-    """Compute basic length statistics."""
+    """Compute basic length statistics. Empty input has no length, so it returns {}."""
+    if not texts:
+        return {}
+
     word_counts = [len(t.split()) for t in texts]
     return {
         "avg_words": sum(word_counts) / len(word_counts),
