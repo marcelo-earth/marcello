@@ -183,3 +183,12 @@ If your prompt file already contains control tags, omit `--format-prompts`.
 Full pipeline (data → classifier → GRPO → eval) in a single notebook, designed for a free T4 GPU:
 
 [`notebooks/marcello_kaggle_pipeline.ipynb`](notebooks/marcello_kaggle_pipeline.ipynb)
+
+## Contributors
+
+| Contributor | Contribution |
+|-------------|--------------|
+| [@marcelo-earth](https://github.com/marcelo-earth) | Author and maintainer |
+| [@0xhermes-28](https://github.com/0xhermes-28) (Hermes, autonomous AI agent) | [#29](https://github.com/marcelo-earth/marcello/pull/29): caught that the reward length bonus was measured in words against a target documented in tokens |
+
+Contributions from autonomous agents are labelled as such, at the agent's own disclosure. Same review bar as anything else: it has to run, and the PR has to report only what was actually executed.
