@@ -31,7 +31,10 @@ reward:
   repetition_penalty_weight: 0.15
   prompt_echo_penalty_weight: 0.1
   reference_copy_penalty_weight: 0.15
-  target_length: 180
+  # tokens, same unit as max_new_tokens above. Set from scripts/measure_length_units.py:
+  # the corpus positives sit at a median of 51 tokens (es 49, en 54) and a p90 of 85,
+  # so the bonus peaks near the median and reaches zero at 120, inside the 256 budget.
+  target_length: 60
   reference_texts_path: data/processed/train
   reference_ngram_size: 8
 

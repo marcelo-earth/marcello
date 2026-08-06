@@ -167,11 +167,15 @@ def main():
 
     if args.reward_config:
         console.print("\n[bold]Computing per-component reward breakdown...[/]")
+        from transformers import AutoTokenizer
+
         from marcello.grpo.reward import StyleReward
 
         with open(args.reward_config) as f:
             rcfg = yaml.safe_load(f)
         rw_cfg = rcfg.get("reward", rcfg)
+        # the length bonus is measured in tokens, so it needs the generating tokenizer
+        reward_tokenizer = AutoTokenizer.from_pretrained(args.base_model)
         reward_fn = StyleReward(
             classifier_path=args.classifier,
             temperature=rw_cfg.get("temperature", 1.0),
@@ -181,7 +185,8 @@ def main():
             repetition_penalty_weight=rw_cfg.get("repetition_penalty_weight", 0.15),
             prompt_echo_penalty_weight=rw_cfg.get("prompt_echo_penalty_weight", 0.1),
             reference_copy_penalty_weight=rw_cfg.get("reference_copy_penalty_weight", 0.15),
-            target_length=rw_cfg.get("target_length", 180),
+            target_length=rw_cfg.get("target_length", 60),
+            tokenizer=reward_tokenizer,
             reference_texts_path=args.reference_texts,
             reference_ngram_size=rw_cfg.get("reference_ngram_size", 8),
         )

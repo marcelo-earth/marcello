@@ -64,7 +64,7 @@ class MarceLLoGRPOConfig:
     reward_repetition_penalty_weight: float = 0.15
     reward_prompt_echo_penalty_weight: float = 0.1
     reward_reference_copy_penalty_weight: float = 0.15
-    reward_target_length: int = 180
+    reward_target_length: int = 60  # tokens, same unit as max_new_tokens
     reward_reference_texts_path: str | None = "data/processed/train"
     reward_reference_ngram_size: int = 8
 
@@ -121,6 +121,7 @@ class MarceLLoGRPOTrainer:
             prompt_echo_penalty_weight=self.config.reward_prompt_echo_penalty_weight,
             reference_copy_penalty_weight=self.config.reward_reference_copy_penalty_weight,
             target_length=self.config.reward_target_length,
+            tokenizer=self.tokenizer,
             reference_texts_path=self.config.reward_reference_texts_path,
             reference_ngram_size=self.config.reward_reference_ngram_size,
         )

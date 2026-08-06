@@ -64,12 +64,20 @@ class StyleReward:
         repetition_penalty_weight: float = 0.15,
         prompt_echo_penalty_weight: float = 0.1,
         reference_copy_penalty_weight: float = 0.15,
-        target_length: int = 180,
+        target_length: int = 60,
+        tokenizer=None,
         reference_texts_path: str | None = None,
         reference_ngram_size: int = 8,
         min_reward: float = -1.0,
         max_reward: float = 1.0,
     ):
+        if length_bonus_weight > 0 and tokenizer is None:
+            raise ValueError(
+                "length_bonus_weight > 0 requires a tokenizer: target_length is measured "
+                "in tokens, so the bonus cannot be computed without one. Pass the same "
+                "tokenizer the policy generates with, or set length_bonus_weight=0."
+            )
+
         self.classifier = StyleClassifier.from_pretrained(classifier_path)
         self.classifier.eval()
         self.temperature = temperature
@@ -80,6 +88,7 @@ class StyleReward:
         self.prompt_echo_penalty_weight = prompt_echo_penalty_weight
         self.reference_copy_penalty_weight = reference_copy_penalty_weight
         self.target_length = target_length
+        self.tokenizer = tokenizer
         self.reference_texts_path = reference_texts_path
         self.reference_ngram_size = max(3, reference_ngram_size)
         self.min_reward = min_reward
@@ -107,8 +116,14 @@ class StyleReward:
         return ngrams
 
     def _length_bonus(self, text: str) -> float:
-        """Small bonus for outputs near target length. Prevents degenerate short/long outputs."""
-        length = len(text.split())
+        """Small bonus for outputs near target length. Prevents degenerate short/long outputs.
+
+        Length is measured in tokens, the same unit as `max_new_tokens`, so the peak of
+        the bonus is a length the policy can actually reach. Measuring in words made the
+        target unreachable in Spanish (1.62 tokens per word) and turned the bonus into a
+        monotone "longer is better" signal. See issue #17.
+        """
+        length = len(self.tokenizer.encode(text, add_special_tokens=False))
         diff = abs(length - self.target_length) / self.target_length
         return max(0.0, 1.0 - diff)
 

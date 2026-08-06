@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
 import torch
+import yaml
 from datasets import Dataset
 
 from marcello.grpo.prompting import (
@@ -23,6 +27,13 @@ class FakeClassifier:
 
     def predict(self, texts):
         return [0.9 for _ in texts]
+
+
+class FakeTokenizer:
+    """One token per 4 characters, so token counts never equal word counts."""
+
+    def encode(self, text, add_special_tokens=False):
+        return list(range(len(text) // 4))
 
 
 def test_infer_language_prefers_spanish_with_accents():
@@ -194,12 +205,75 @@ def test_style_reward_defaults_match_grpo_yaml(monkeypatch):
         lambda _: FakeClassifier(),
     )
 
-    reward = StyleReward(classifier_path="unused")
+    reward = StyleReward(classifier_path="unused", tokenizer=FakeTokenizer())
 
-    assert reward.target_length == 180
+    config = yaml.safe_load(Path("configs/grpo.yaml").read_text(encoding="utf-8"))["reward"]
+    assert reward.target_length == config["target_length"]
+    assert reward.length_bonus_weight == config["length_bonus_weight"]
+
+    assert reward.target_length == 60
     assert reward.length_bonus_weight == 0.1
     assert reward.style_weight == 0.65
     assert reward.prompt_relevance_weight == 0.2
     assert reward.repetition_penalty_weight == 0.15
     assert reward.reference_copy_penalty_weight == 0.15
     assert reward.prompt_echo_penalty_weight == 0.1
+
+
+def test_length_bonus_measures_tokens_not_words(monkeypatch):
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+
+    reward = StyleReward(classifier_path="unused", target_length=10, tokenizer=FakeTokenizer())
+
+    # 4 words, 40 characters, so 10 tokens under FakeTokenizer: the peak of the bonus
+    text = "aaaaaaa bbbbbbbbb ccccccccc ddddddddd ee"
+    assert len(text) // 4 == 10
+    assert len(text.split()) == 5
+
+    assert reward._length_bonus(text) == 1.0
+    # a word count of 5 against a target of 10 would have scored 0.5, not 1.0
+    assert reward._length_bonus(text) != 0.5
+
+
+def test_length_bonus_is_exercised_by_score_at_the_default_weight(monkeypatch):
+    """Regression for #17: the bonus used to raise on every call and no test caught it,
+    because the only test reaching score() switched the bonus off."""
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+
+    reward = StyleReward(classifier_path="unused", tokenizer=FakeTokenizer())
+    assert reward.length_bonus_weight > 0
+
+    breakdown = reward.score(["Una frase corta sobre la noche."], return_breakdown=True)
+
+    assert breakdown[0]["length_bonus"] > 0
+    assert isinstance(breakdown[0]["total"], float)
+
+
+def test_style_reward_refuses_a_live_length_bonus_without_a_tokenizer(monkeypatch):
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+
+    with pytest.raises(ValueError, match="requires a tokenizer"):
+        StyleReward(classifier_path="unused", length_bonus_weight=0.1)
+
+    # switching the bonus off is still a valid way to build it
+    StyleReward(classifier_path="unused", length_bonus_weight=0.0)
+
+
+def test_target_length_peak_is_reachable_within_the_generation_budget():
+    """The bonus is zero at 2 * target_length. If that sits past max_new_tokens the
+    curve is monotone inside the budget and rewards padding to the cap."""
+    config = yaml.safe_load(Path("configs/grpo.yaml").read_text(encoding="utf-8"))
+
+    target = config["reward"]["target_length"]
+    budget = config["grpo"]["max_new_tokens"]
+
+    assert 2 * target <= budget
