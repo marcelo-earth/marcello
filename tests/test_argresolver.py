@@ -65,13 +65,34 @@ def test_raises_when_neither_epsilon_nor_clip_range_supported():
         raise AssertionError("expected RuntimeError for unmapped clip_range")
 
 
+def test_warns_and_drops_optional_fields_without_raising():
+    import logging
+
+    warnings = []
+    handler = logging.Handler()
+    handler.emit = lambda record: warnings.append(record.getMessage())
+    logger = logging.getLogger("marcello.grpo.argresolver")
+    logger.addHandler(handler)
+    logger.setLevel(logging.WARNING)
+    try:
+        out = resolve(
+            {"temperature": 0.8, "top_p": 0.95, "learning_rate": 5e-7},
+            supported={"learning_rate"},
+        )
+    finally:
+        logger.removeHandler(handler)
+    assert out == {"learning_rate": 5e-7}
+    assert any("temperature" in w for w in warnings)
+    assert any("top_p" in w for w in warnings)
+
+
 def test_raises_when_a_plain_key_is_unsupported():
     try:
-        resolve({"temperature": 0.8}, supported={"learning_rate"})
+        resolve({"output_dir": "outputs/grpo"}, supported={"learning_rate"})
     except RuntimeError as exc:
-        assert "temperature" in str(exc)
+        assert "output_dir" in str(exc)
     else:
-        raise AssertionError("expected RuntimeError for unmapped temperature")
+        raise AssertionError("expected RuntimeError for unmapped output_dir")
 
 
 def test_record_writes_requested_and_resolved(tmp_path: Path):
@@ -81,6 +102,16 @@ def test_record_writes_requested_and_resolved(tmp_path: Path):
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["requested"] == requested
     assert payload["resolved_for_trl"] == resolved
+
+
+def test_record_serializes_non_json_values_with_str(tmp_path: Path):
+    requested = {"path": Path("outputs/grpo")}
+    resolved = {"obj": {"x": Path("a/b")}}
+    path = record(requested, resolved, tmp_path / "grpo")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    # Path objects are coerced via str(); compare platform-agnostically.
+    assert payload["requested"] == {"path": str(Path("outputs/grpo"))}
+    assert payload["resolved_for_trl"] == {"obj": {"x": str(Path("a/b"))}}
 
 
 if __name__ == "__main__":
@@ -95,8 +126,10 @@ if __name__ == "__main__":
             test_passes_through_plain_supported_keys,
             test_raises_when_neither_beta_nor_kl_coef_supported,
             test_raises_when_neither_epsilon_nor_clip_range_supported,
+            test_warns_and_drops_optional_fields_without_raising,
             test_raises_when_a_plain_key_is_unsupported,
             lambda: test_record_writes_requested_and_resolved(tmp / "t"),
+            lambda: test_record_serializes_non_json_values_with_str(tmp / "t"),
         ]
         for fn in checks:
             try:

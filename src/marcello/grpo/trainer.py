@@ -16,6 +16,7 @@ Algorithm per training step:
 from __future__ import annotations
 
 import inspect
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -149,12 +150,13 @@ class MarceLLoGRPOTrainer:
             return [prompt for prompt in normalized for _ in range(repeat)]
         return normalized[:expected]
 
-    def _build_grpo_args(self) -> GRPOConfig:
+    def _build_grpo_args(self) -> tuple[dict, GRPOConfig]:
         """Build TRL config using only fields supported by the installed version.
 
         Unlike the old filter, a configured hyperparameter that cannot be mapped
         to any supported TRL field now raises loudly instead of silently
-        running with TRL's default (issue #20).
+        running with TRL's default (issue #20). Returns ``(requested, config)``
+        so the run record states exactly what was asked vs what was resolved.
         """
         supported = set(inspect.signature(GRPOConfig.__init__).parameters)
         config_kwargs = {
@@ -175,7 +177,7 @@ class MarceLLoGRPOTrainer:
             "clip_range": self.config.clip_range,
         }
         resolved_kwargs = resolve_grpo_kwargs(config_kwargs, supported)
-        return GRPOConfig(**resolved_kwargs)
+        return config_kwargs, GRPOConfig(**resolved_kwargs)
 
     def _build_reward_function(self):
         """Build a reward function compatible with TRL's GRPOTrainer.
@@ -202,18 +204,12 @@ class MarceLLoGRPOTrainer:
         self._load_model()
         self._load_reward()
 
-        grpo_config = self._build_grpo_args()
+        requested_kwargs, grpo_config = self._build_grpo_args()
+        resolved_view = grpo_config.to_dict() if hasattr(grpo_config, "to_dict") else vars(grpo_config)
+        print(f"[grpo] resolved TRL GRPOConfig: {json.dumps(resolved_view, default=str, sort_keys=True)}")
         record_resolved_config(
-            {
-                "kl_coef": self.config.kl_coef,
-                "clip_range": self.config.clip_range,
-                "temperature": self.config.temperature,
-                "top_p": self.config.top_p,
-                "num_generations": self.config.num_generations,
-                "max_new_tokens": self.config.max_new_tokens,
-                "learning_rate": self.config.learning_rate,
-            },
-            grpo_config.to_dict() if hasattr(grpo_config, "to_dict") else vars(grpo_config),
+            requested_kwargs,
+            resolved_view,
             Path(self.config.output_dir),
         )
 
