@@ -151,6 +151,8 @@ def main():
             "grpo": judge.predict(results["grpo_completions"]),
         }
         for label, scores in judge_scores.items():
+            if not scores:
+                continue
             mean = sum(scores) / len(scores)
             std = (sum((s - mean) ** 2 for s in scores) / len(scores)) ** 0.5
             results[f"{label}_metrics"]["judge_score_mean"] = mean
@@ -160,10 +162,13 @@ def main():
             entry["base_judge_score"] = judge_scores["base"][i]
             entry["grpo_judge_score"] = judge_scores["grpo"][i]
 
-        base_mean = results["base_metrics"]["judge_score_mean"]
-        grpo_mean = results["grpo_metrics"]["judge_score_mean"]
-        console.print(f"  Base judge score: {base_mean:.4f}")
-        console.print(f"  GRPO judge score: {grpo_mean:.4f}  ({grpo_mean - base_mean:+.4f})")
+        base_mean = results["base_metrics"].get("judge_score_mean")
+        grpo_mean = results["grpo_metrics"].get("judge_score_mean")
+        if base_mean is None or grpo_mean is None:
+            console.print("  [yellow]No completions to judge, skipping judge scores[/]")
+        else:
+            console.print(f"  Base judge score: {base_mean:.4f}")
+            console.print(f"  GRPO judge score: {grpo_mean:.4f}  ({grpo_mean - base_mean:+.4f})")
 
     if args.reward_config:
         console.print("\n[bold]Computing per-component reward breakdown...[/]")
