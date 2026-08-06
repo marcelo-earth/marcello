@@ -65,7 +65,7 @@ def main():
         reward_reference_copy_penalty_weight=config["reward"].get(
             "reference_copy_penalty_weight", 0.15
         ),
-        reward_target_length=config["reward"].get("target_length", 200),
+        reward_target_length=config["reward"].get("target_length", 60),
         reward_reference_texts_path=config["reward"].get(
             "reference_texts_path", "data/processed/train"
         ),
