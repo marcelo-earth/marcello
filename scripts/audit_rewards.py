@@ -44,7 +44,11 @@ def _load_entries(path: Path) -> list[dict]:
             "Re-run scripts/evaluate.py with --reward-config (and --reference-texts)."
         )
     # reward breakdowns were written per label (base/grpo); collect whichever exist
-    labels = [label for label in ("base", "grpo") if f"{label}_reward_breakdown" in results["per_prompt"][0]]
+    labels = [
+        label
+        for label in ("base", "grpo")
+        if f"{label}_reward_breakdown" in results["per_prompt"][0]
+    ]
     entries = []
     for entry in results["per_prompt"]:
         for label in labels:
@@ -137,7 +141,12 @@ def main() -> None:
         help="Path to evaluate.py JSON output (must include per-prompt reward breakdowns)",
     )
     parser.add_argument("--top-k", type=int, default=10)
-    parser.add_argument("--reward-config", type=Path, default=None, help="Optional grpo.yaml for ngram size")
+    parser.add_argument(
+        "--reward-config",
+        type=Path,
+        default=None,
+        help="Optional grpo.yaml for ngram size",
+    )
     parser.add_argument("--ngram-size", type=int, default=3)
     args = parser.parse_args()
 
