@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  Trained with poems and posts — an RL-based style transfer system that fine-tunes an LLM to capture my writing style. Research ongoing.
+  Trained with poems and posts: an RL-based style transfer system that fine-tunes an LLM to capture my writing style. Research ongoing.
 </p>
 
 ## Concept
 
 Standard fine-tuning (SFT) memorizes examples. MarceLLo uses **GRPO** (Group Relative Policy Optimization) to let the model *discover* writing style through reinforcement learning, guided by a style classifier as reward signal.
 
-Same technique DeepSeek used for R1 — but the reward is "how much does this sound like Marcelo" instead of "is this reasoning correct."
+Same technique DeepSeek used for R1, but the reward is "how much does this sound like Marcelo" instead of "is this reasoning correct."
 
 ## Architecture
 
