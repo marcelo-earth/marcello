@@ -114,7 +114,11 @@ Qwen2.5-1.5B with LoRA, optimized via GRPO using the classifier as reward signal
 | Length bonus | 0.10 |
 | Prompt echo penalty | 0.10 |
 
-Target length: 180 tokens. Reference n-gram size: 8.
+Target length: 60 tokens, measured with the policy's own tokenizer. Reference n-gram size: 8.
+
+The corpus positives have a median length of 51 tokens (49 in Spanish, 54 in English) and a
+p90 of 85, so the bonus peaks close to how Marcelo actually writes and reaches zero at 120,
+well inside the 256-token generation budget.
 
 ## Evaluation
 
