@@ -24,6 +24,8 @@ from peft import LoraConfig, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
+from marcello.grpo.argresolver import record as record_resolved_config
+from marcello.grpo.argresolver import resolve as resolve_grpo_kwargs
 from marcello.grpo.reward import StyleReward
 
 
@@ -148,7 +150,12 @@ class MarceLLoGRPOTrainer:
         return normalized[:expected]
 
     def _build_grpo_args(self) -> GRPOConfig:
-        """Build TRL config using only fields supported by the installed version."""
+        """Build TRL config using only fields supported by the installed version.
+
+        Unlike the old filter, a configured hyperparameter that cannot be mapped
+        to any supported TRL field now raises loudly instead of silently
+        running with TRL's default (issue #20).
+        """
         supported = set(inspect.signature(GRPOConfig.__init__).parameters)
         config_kwargs = {
             "output_dir": self.config.output_dir,
@@ -163,20 +170,12 @@ class MarceLLoGRPOTrainer:
             "top_p": self.config.top_p,
             "log_completions": True,
             "report_to": "wandb" if self.config.use_wandb else "none",
+            # Fallback chains: kl_coef -> beta|kl_coef, clip_range -> epsilon|clip_range.
+            "kl_coef": self.config.kl_coef,
+            "clip_range": self.config.clip_range,
         }
-
-        if "beta" in supported:
-            config_kwargs["beta"] = self.config.kl_coef
-        elif "kl_coef" in supported:
-            config_kwargs["kl_coef"] = self.config.kl_coef
-
-        if "epsilon" in supported:
-            config_kwargs["epsilon"] = self.config.clip_range
-        elif "clip_range" in supported:
-            config_kwargs["clip_range"] = self.config.clip_range
-
-        filtered_kwargs = {key: value for key, value in config_kwargs.items() if key in supported}
-        return GRPOConfig(**filtered_kwargs)
+        resolved_kwargs = resolve_grpo_kwargs(config_kwargs, supported)
+        return GRPOConfig(**resolved_kwargs)
 
     def _build_reward_function(self):
         """Build a reward function compatible with TRL's GRPOTrainer.
@@ -204,6 +203,19 @@ class MarceLLoGRPOTrainer:
         self._load_reward()
 
         grpo_config = self._build_grpo_args()
+        record_resolved_config(
+            {
+                "kl_coef": self.config.kl_coef,
+                "clip_range": self.config.clip_range,
+                "temperature": self.config.temperature,
+                "top_p": self.config.top_p,
+                "num_generations": self.config.num_generations,
+                "max_new_tokens": self.config.max_new_tokens,
+                "learning_rate": self.config.learning_rate,
+            },
+            grpo_config.to_dict() if hasattr(grpo_config, "to_dict") else vars(grpo_config),
+            Path(self.config.output_dir),
+        )
 
         self._trainer = GRPOTrainer(
             model=self.model,
