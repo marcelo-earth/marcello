@@ -1,0 +1,45 @@
+{
+  "counts_per_class": {
+    "train": {
+      "positive": 215,
+      "negative": 215
+    },
+    "val": {
+      "positive": 38,
+      "negative": 38
+    }
+  },
+  "negative_source_counts": {
+    ".": 69,
+    "blog": 28,
+    "multilingual": 24,
+    "poetry": 85,
+    "rephrased": 178,
+    "wikipedia": 21
+  },
+  "surface_cell_counts": {
+    "(0, 'en', False)": 10,
+    "(0, 'es', False)": 11,
+    "(0, 'es', True)": 8,
+    "(1, 'en', False)": 4,
+    "(1, 'es', False)": 5,
+    "(1, 'es', True)": 26,
+    "(2, 'en', False)": 8,
+    "(2, 'es', False)": 1,
+    "(2, 'es', True)": 22,
+    "(3, 'en', False)": 10,
+    "(3, 'es', False)": 1,
+    "(3, 'es', True)": 22,
+    "(4, 'en', False)": 11,
+    "(4, 'es', False)": 2,
+    "(4, 'es', True)": 22,
+    "(5, 'en', False)": 21,
+    "(5, 'es', True)": 7,
+    "(6, 'en', False)": 29,
+    "(6, 'es', False)": 2,
+    "(6, 'es', True)": 7,
+    "(7, 'en', False)": 19,
+    "(7, 'es', True)": 5
+  },
+  "text_hash": "78fb895fa718df41fe047b965370bd4d4ae3566704c178f4bbceb3fca37a9b39"
+}

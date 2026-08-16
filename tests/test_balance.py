@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import statistics
 
-from marcello.data.balance import is_verse, length_matched_indices, undersample_indices
+from marcello.data.balance import (
+    is_verse,
+    length_matched_indices,
+    surface_cell_counts,
+    undersample_indices,
+)
 
 
 def _text(words: int) -> str:
@@ -101,3 +106,34 @@ def test_length_matching_is_deterministic_for_a_seed():
     assert length_matched_indices(texts, labels, seed=7) == length_matched_indices(
         texts, labels, seed=7
     )
+
+
+def test_surface_cell_counts_sum_matches_length_matched_indices():
+    texts = [_text(n) for n in range(10, 60)] + [_text(n) for n in range(40, 90)]
+    labels = [1] * 50 + [0] * 50
+
+    kept = length_matched_indices(texts, labels, seed=0)
+    cells = surface_cell_counts(texts, labels)
+
+    assert sum(cells.values()) * 2 == len(kept)
+
+
+def test_surface_cell_counts_ignores_seed():
+    """Which count survives a stratum is deterministic, not sampled."""
+    texts = [_text(n) for n in range(10, 60)] + [_text(n) for n in range(40, 90)]
+    labels = [1] * 50 + [0] * 50
+
+    assert surface_cell_counts(texts, labels) == surface_cell_counts(
+        [_text(n) for n in range(10, 60)] + [_text(n) for n in range(40, 90)], labels
+    )
+
+
+def test_surface_cell_counts_drops_single_class_strata():
+    """A cell only one class reaches contributes zero, and must not appear."""
+    texts = [_text(5), _text(6), _text(200), _text(210)] + [_text(5), _text(6)]
+    labels = [1, 1, 1, 1, 0, 0]
+
+    cells = surface_cell_counts(texts, labels, num_bins=2)
+
+    assert sum(cells.values()) == 2
+    assert all(count > 0 for count in cells.values())

@@ -20,7 +20,8 @@ data/raw/*
 !data/raw/writing_samples/
 !data/raw/writing_samples_blog/
 !data/raw/negative_samples/
-data/processed/
+data/processed/*
+!data/processed/manifest.json
 outputs/
 wandb/
 *.pt

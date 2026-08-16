@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import yaml
 from rich.console import Console
 from rich.table import Table
 
-from marcello.data.balance import length_matched_indices, undersample_indices
+from marcello.data.balance import length_matched_indices, surface_cell_counts, undersample_indices
 from marcello.data.collector import WritingSampleCollector
+from marcello.data.manifest import corpus_hash
 from marcello.data.negative_sampler import NegativeSampler, NegativeStrategy
 from marcello.data.processor import TextProcessor
 
@@ -93,18 +95,20 @@ def main():
 
     # --- Balance classes ---
     out_cfg = config.get("output", {})
+    surface_cells: dict[str, int] = {}
     if out_cfg.get("balance_classes", True):
         texts = list(contrastive_dataset["text"])
         labels = list(contrastive_dataset["label"])
         seed = out_cfg.get("seed", 42)
 
         if out_cfg.get("length_match", True):
+            num_bins = out_cfg.get("length_bins", 8)
+            match_form = out_cfg.get("match_form", True)
             balanced_indices = length_matched_indices(
-                texts,
-                labels,
-                seed=seed,
-                num_bins=out_cfg.get("length_bins", 8),
-                match_form=out_cfg.get("match_form", True),
+                texts, labels, seed=seed, num_bins=num_bins, match_form=match_form
+            )
+            surface_cells = surface_cell_counts(
+                texts, labels, num_bins=num_bins, match_form=match_form
             )
             how = "balanced per surface stratum"
         else:
@@ -137,6 +141,27 @@ def main():
 
     split["train"].save_to_disk(output_path / "train")
     split["test"].save_to_disk(output_path / "val")
+
+    # --- Manifest ---
+    # A rebuild that silently drifts (one fewer negative, a shifted balance
+    # cell) is otherwise invisible: data/processed/ is gitignored, so nothing
+    # here is checked into git except this file.
+    manifest = {
+        "counts_per_class": {
+            name: {
+                "positive": sum(1 for lbl in ds["label"] if lbl == 1),
+                "negative": sum(1 for lbl in ds["label"] if lbl == 0),
+            }
+            for name, ds in [("train", split["train"]), ("val", split["test"])]
+        },
+        "negative_source_counts": dict(sorted(sampler.source_counts.items())),
+        "surface_cell_counts": surface_cells,
+        "text_hash": corpus_hash(list(split["train"]["text"]) + list(split["test"]["text"])),
+    }
+    (output_path / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    console.print(f"Manifest written to [bold]{output_path / 'manifest.json'}[/]\n")
 
     # --- Summary ---
     table = Table(title="Dataset Summary")
