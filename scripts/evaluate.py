@@ -6,6 +6,7 @@ import argparse
 import json
 import subprocess
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import yaml
@@ -26,6 +27,23 @@ def _git_hash() -> str | None:
         ).strip()
     except Exception:
         return None
+
+
+def _library_versions() -> dict[str, str | None]:
+    """Resolved versions of the fast-moving libraries a run actually used.
+
+    pyproject.toml only pins lower (and now upper) bounds, so a run's numbers
+    can only be reproduced if the exact versions installed at the time are
+    recorded alongside them.
+    """
+    packages = ["torch", "transformers", "trl", "peft"]
+    versions = {}
+    for package in packages:
+        try:
+            versions[package] = version(package)
+        except PackageNotFoundError:
+            versions[package] = None
+    return versions
 
 
 def _print_summary(base_metrics: dict, grpo_metrics: dict) -> None:
@@ -260,6 +278,7 @@ def main():
                     "run_id": now.strftime("%Y%m%d-%H%M%S"),
                     "timestamp": now.isoformat(),
                     "git_hash": _git_hash(),
+                    "library_versions": _library_versions(),
                     "model": args.model,
                     "base_model": args.base_model,
                     "classifier": args.classifier,
