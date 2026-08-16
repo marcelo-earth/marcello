@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 
 import yaml
 from datasets import load_from_disk
@@ -14,15 +16,64 @@ from marcello.grpo.trainer import MarceLLoGRPOConfig, MarceLLoGRPOTrainer
 console = Console()
 
 
+def check_probe_gate(classifier_path: str, skip: bool) -> None:
+    """Refuse to train against an unprobed, failing, or stale classifier.
+
+    Mirrors the default report location `sanity_probe.py` writes to: a
+    `sanity_probe.json` beside the classifier directory being probed.
+    """
+    if skip:
+        console.print(
+            "[bold yellow]--skip-probe-gate set: training against an unverified classifier.[/]"
+        )
+        return
+
+    classifier_dir = Path(classifier_path)
+    report_path = classifier_dir.parent / "sanity_probe.json"
+    model_path = classifier_dir / "model.pt"
+
+    if not report_path.exists():
+        raise SystemExit(
+            f"[probe gate] No sanity probe report at {report_path}. "
+            f"Run `make probe` (or `python scripts/sanity_probe.py --classifier "
+            f"{classifier_path}`) before training, or pass --skip-probe-gate."
+        )
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    if not report.get("passed", False):
+        raise SystemExit(
+            f"[probe gate] {report_path} reports a failed probe "
+            f"({len(report.get('failures', []))} failure(s)). Rebuild the corpus "
+            "or classifier and re-run `make probe` before training."
+        )
+
+    if model_path.exists() and report_path.stat().st_mtime < model_path.stat().st_mtime:
+        raise SystemExit(
+            f"[probe gate] {report_path} is older than {model_path} — the probe "
+            "was run against a different classifier checkpoint. Re-run `make probe` "
+            "before training."
+        )
+
+    console.print(f"[green]Probe gate passed[/] ({report_path})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run GRPO training")
     parser.add_argument("--config", type=str, default="configs/grpo.yaml")
+    parser.add_argument(
+        "--skip-probe-gate",
+        action="store_true",
+        help="Skip the sanity-probe gate (escape hatch; prints a loud warning)",
+    )
     args = parser.parse_args()
 
     with open(args.config) as f:
         config = yaml.safe_load(f)
 
     console.print("\n[bold]MarceLLo GRPO Training[/]\n")
+
+    check_probe_gate(config["reward"]["classifier_path"], skip=args.skip_probe_gate)
 
     # build prompt dataset
     prompts_path = config.get("prompts", {}).get("path")
