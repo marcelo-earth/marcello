@@ -16,6 +16,8 @@ Algorithm per training step:
 from __future__ import annotations
 
 import inspect
+import json
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -148,7 +150,13 @@ class MarceLLoGRPOTrainer:
         return normalized[:expected]
 
     def _build_grpo_args(self) -> GRPOConfig:
-        """Build TRL config using only fields supported by the installed version."""
+        """Build TRL config using only fields supported by the installed version.
+
+        Every configured hyperparameter that cannot be mapped to a field the
+        installed TRL actually accepts is reported in `dropped` instead of
+        vanishing silently, and the kwargs that were actually passed to
+        GRPOConfig are saved next to the run so the record states what ran.
+        """
         supported = set(inspect.signature(GRPOConfig.__init__).parameters)
         config_kwargs = {
             "output_dir": self.config.output_dir,
@@ -165,18 +173,47 @@ class MarceLLoGRPOTrainer:
             "report_to": "wandb" if self.config.use_wandb else "none",
         }
 
+        dropped = [key for key in config_kwargs if key not in supported]
+
         if "beta" in supported:
             config_kwargs["beta"] = self.config.kl_coef
         elif "kl_coef" in supported:
             config_kwargs["kl_coef"] = self.config.kl_coef
+        else:
+            dropped.append("kl_coef (tried: beta, kl_coef)")
 
         if "epsilon" in supported:
             config_kwargs["epsilon"] = self.config.clip_range
         elif "clip_range" in supported:
             config_kwargs["clip_range"] = self.config.clip_range
+        else:
+            dropped.append("clip_range (tried: epsilon, clip_range)")
+
+        if dropped:
+            warnings.warn(
+                "The installed TRL's GRPOConfig does not accept these configured "
+                f"hyperparameters: {', '.join(dropped)}. They were dropped and "
+                "TRL's own defaults apply instead of the values in the YAML config. "
+                "The installed TRL likely renamed a field GRPOConfig used to expose.",
+                stacklevel=2,
+            )
 
         filtered_kwargs = {key: value for key, value in config_kwargs.items() if key in supported}
+        self._save_resolved_config(filtered_kwargs, dropped)
         return GRPOConfig(**filtered_kwargs)
+
+    def _save_resolved_config(self, resolved_kwargs: dict, dropped: list[str]) -> None:
+        """Print and persist what was actually passed to GRPOConfig, not the YAML intent."""
+        print(f"\nResolved GRPOConfig kwargs: {resolved_kwargs}")
+        if dropped:
+            print(f"Dropped (unsupported by installed TRL): {dropped}")
+
+        output_dir = Path(self.config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        record = {"resolved_kwargs": resolved_kwargs, "dropped": dropped}
+        (output_dir / "resolved_grpo_config.json").write_text(
+            json.dumps(record, indent=2, default=str), encoding="utf-8"
+        )
 
     def _build_reward_function(self):
         """Build a reward function compatible with TRL's GRPOTrainer.
