@@ -67,6 +67,22 @@ def _surface_strata(texts: list[str], num_bins: int) -> list[tuple]:
     ]
 
 
+def _strata_buckets(
+    texts: list[str], labels: list[int], num_bins: int, match_form: bool
+) -> dict[tuple, list[int]]:
+    counts = [_word_count(text) for text in texts]
+    if match_form:
+        strata = _surface_strata(texts, num_bins)
+    else:
+        edges = _bin_edges(counts, num_bins)
+        strata = [(_bin_of(count, edges),) for count in counts]
+
+    buckets: dict[tuple, list[int]] = {}
+    for index, (stratum, label) in enumerate(zip(strata, labels)):
+        buckets.setdefault((stratum, label), []).append(index)
+    return buckets
+
+
 def length_matched_indices(
     texts: list[str],
     labels: list[int],
@@ -85,16 +101,7 @@ def length_matched_indices(
     negatives, a 60% base rate for Marcelo that the probe read back almost
     exactly as Becquer's 0.61.
     """
-    counts = [_word_count(text) for text in texts]
-    if match_form:
-        strata = _surface_strata(texts, num_bins)
-    else:
-        edges = _bin_edges(counts, num_bins)
-        strata = [(_bin_of(count, edges),) for count in counts]
-
-    buckets: dict[tuple, list[int]] = {}
-    for index, (stratum, label) in enumerate(zip(strata, labels)):
-        buckets.setdefault((stratum, label), []).append(index)
+    buckets = _strata_buckets(texts, labels, num_bins, match_form)
 
     rng = random.Random(seed)
     kept: list[int] = []
@@ -107,6 +114,28 @@ def length_matched_indices(
         kept += rng.sample(positives, keep) + rng.sample(negatives, keep)
 
     return sorted(kept)
+
+
+def surface_cell_counts(
+    texts: list[str],
+    labels: list[int],
+    num_bins: int = 8,
+    match_form: bool = True,
+) -> dict[str, int]:
+    """Per-stratum count kept by `length_matched_indices`, keyed by stratum repr.
+
+    Which count survives a stratum (`min(positives, negatives)`) does not
+    depend on the random seed, only on the bucketing, so this mirrors
+    `length_matched_indices` without sampling. Meant for the corpus manifest:
+    a rebuild that shifts a cell's count is a rebuild that drifted.
+    """
+    buckets = _strata_buckets(texts, labels, num_bins, match_form)
+    cells: dict[str, int] = {}
+    for stratum in sorted({key[0] for key in buckets}, key=repr):
+        keep = min(len(buckets.get((stratum, 1), [])), len(buckets.get((stratum, 0), [])))
+        if keep:
+            cells[repr(stratum)] = keep
+    return cells
 
 
 def undersample_indices(labels: list[int], seed: int = 42) -> list[int]:
