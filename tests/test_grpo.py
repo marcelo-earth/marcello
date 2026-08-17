@@ -282,6 +282,9 @@ def test_style_reward_defaults_match_grpo_yaml(monkeypatch):
     config = yaml.safe_load(Path("configs/grpo.yaml").read_text(encoding="utf-8"))["reward"]
     assert reward.target_length == config["target_length"]
     assert reward.length_bonus_weight == config["length_bonus_weight"]
+    assert reward.echo_ngram_size == config["echo_ngram_size"]
+    assert reward.echo_floor == config["echo_floor"]
+    assert reward.relevance_target_tokens == config["relevance_target_tokens"]
 
     assert reward.target_length == 60
     assert reward.length_bonus_weight == 0.1

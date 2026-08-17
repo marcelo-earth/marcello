@@ -121,6 +121,9 @@ def main():
             "reference_texts_path", "data/processed/train"
         ),
         reward_reference_ngram_size=config["reward"].get("reference_ngram_size", 8),
+        reward_echo_ngram_size=config["reward"].get("echo_ngram_size", 4),
+        reward_echo_floor=config["reward"].get("echo_floor", 0.35),
+        reward_relevance_target_tokens=config["reward"].get("relevance_target_tokens", 8),
         output_dir=config["output"]["dir"],
         use_wandb=config["training"].get("use_wandb", False),
     )

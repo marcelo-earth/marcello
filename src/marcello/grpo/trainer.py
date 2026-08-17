@@ -69,6 +69,9 @@ class MarceLLoGRPOConfig:
     reward_target_length: int = 60  # tokens, same unit as max_new_tokens
     reward_reference_texts_path: str | None = "data/processed/train"
     reward_reference_ngram_size: int = 8
+    reward_echo_ngram_size: int = 4
+    reward_echo_floor: float = 0.35
+    reward_relevance_target_tokens: int = 8
 
     # output
     output_dir: str = "outputs/grpo"
@@ -126,6 +129,9 @@ class MarceLLoGRPOTrainer:
             tokenizer=self.tokenizer,
             reference_texts_path=self.config.reward_reference_texts_path,
             reference_ngram_size=self.config.reward_reference_ngram_size,
+            echo_ngram_size=self.config.reward_echo_ngram_size,
+            echo_floor=self.config.reward_echo_floor,
+            relevance_target_tokens=self.config.reward_relevance_target_tokens,
         )
 
     def _normalize_prompts(self, prompts, expected: int) -> list[str] | None:

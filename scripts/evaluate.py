@@ -212,6 +212,9 @@ def main():
             tokenizer=reward_tokenizer,
             reference_texts_path=args.reference_texts,
             reference_ngram_size=rw_cfg.get("reference_ngram_size", 8),
+            echo_ngram_size=rw_cfg.get("echo_ngram_size", 4),
+            echo_floor=rw_cfg.get("echo_floor", 0.35),
+            relevance_target_tokens=rw_cfg.get("relevance_target_tokens", 8),
         )
         prompts_for_reward = results["prompts"]
         for label, completions, metrics_dict in [
