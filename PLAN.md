@@ -173,6 +173,19 @@ Open risks:
 **Unblocked.** Step 1 passed on 2026-07-26, so a run from here means something.
 Re-run the probe against whatever classifier the run actually uses first.
 
+Read the group reward spread before reading anything else the run produced. GRPO
+normalizes advantages inside each group of 8 completions, so a run learns from the
+spread within a group and not from the reward level: if the groups are flat, the
+run cannot learn regardless of the learning rate, and the eval numbers afterwards
+say nothing about the reward design. The trainer prints the per-batch spread as it
+goes, prints a summary when the run ends, and writes every group to
+`outputs/grpo/reward_variance.json`. The summary also names the components whose
+within-group spread was zero: those weights did no work, whatever the config says.
+
+**Recorded group reward std: not yet, no full run has been made.** Fill this in
+with the number from the first run, and with which components turned out to carry
+the spread.
+
 ## Step 6 — GRPO from the SFT checkpoint
 
 Blocked on Steps 4 and 5.
