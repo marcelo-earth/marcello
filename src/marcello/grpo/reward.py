@@ -70,6 +70,7 @@ class StyleReward:
         reference_ngram_size: int = 8,
         echo_ngram_size: int = 4,
         echo_floor: float = 0.35,
+        relevance_exclusion_run: int = 2,
         relevance_target_tokens: int = 8,
         min_reward: float = -1.0,
         max_reward: float = 1.0,
@@ -96,6 +97,9 @@ class StyleReward:
         self.reference_ngram_size = max(3, reference_ngram_size)
         self.echo_ngram_size = max(2, echo_ngram_size)
         self.echo_floor = echo_floor
+        # never longer than what the penalty charges, or copying would go unpriced
+        # in the gap between the two run lengths
+        self.relevance_exclusion_run = min(max(2, relevance_exclusion_run), self.echo_ngram_size)
         self.relevance_target_tokens = max(1, relevance_target_tokens)
         self.min_reward = min_reward
         self.max_reward = max_reward
@@ -148,35 +152,69 @@ class StyleReward:
             return set()
         return {tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)}
 
-    def _shared_ngrams(
-        self, seed_tokens: list[str], text_tokens: list[str]
-    ) -> set[tuple[str, ...]]:
-        """N-grams the completion copies verbatim from the seed.
+    def _copied_spans(
+        self, seed_tokens: list[str], text_tokens: list[str], min_run: int
+    ) -> tuple[set[int], set[int]]:
+        """Which positions on each side belong to a run of `min_run` copied verbatim.
 
-        Both sides are cut at the same n. The previous version sized the seed and
-        the completion n-grams independently, so a seed shorter than the window
-        produced 3-grams against the completion's 4-grams and the intersection was
-        empty by construction: short seeds could never be charged for echoing.
+        Working in positions rather than in sets of n-grams is what lets the echo
+        penalty and `_prompt_relevance` split the same input cleanly: each token is
+        either inside a copied run or it is not, and the two components can then read
+        that one decision at different run lengths without ever grading a token twice.
+
+        `min_run` is clamped to the seed, never to the completion. Clamping it to the
+        completion made the window depend on the sample being scored, so padding a
+        verbatim copy with filler widened the window until the copy no longer matched,
+        and inside a GRPO group the denominator changed from completion to completion.
         """
-        n = min(self.echo_ngram_size, len(seed_tokens), len(text_tokens))
-        if n < 2:
-            return set()
-        return self._ngrams(seed_tokens, n) & self._ngrams(text_tokens, n)
+        n = min(min_run, len(seed_tokens))
+        if n < 2 or len(text_tokens) < n:
+            return set(), set()
+
+        starts_by_window: dict[tuple[str, ...], list[int]] = {}
+        for i in range(len(seed_tokens) - n + 1):
+            starts_by_window.setdefault(tuple(seed_tokens[i : i + n]), []).append(i)
+
+        seed_hits: set[int] = set()
+        text_hits: set[int] = set()
+        for j in range(len(text_tokens) - n + 1):
+            starts = starts_by_window.get(tuple(text_tokens[j : j + n]))
+            if not starts:
+                continue
+            text_hits.update(range(j, j + n))
+            for i in starts:
+                seed_hits.update(range(i, i + n))
+        return seed_hits, text_hits
 
     def _echoed_tokens(self, seed_tokens: list[str], text_tokens: list[str]) -> set[str]:
-        """Seed tokens the completion reuses inside a verbatim run, not on its own."""
-        return {token for ngram in self._shared_ngrams(seed_tokens, text_tokens) for token in ngram}
+        """Tokens the completion took from the seed as part of a copied run.
+
+        The run length here is `relevance_exclusion_run`, which is shorter than the
+        run the echo penalty charges for. Matching the two exactly left a gap the
+        policy could sit in: with a single window of 4, copying exactly three content
+        tokens was charged nothing and paid full relevance, so the best-paying strategy
+        under the pair was still verbatim copying, trimmed to just under the window.
+        Everything the penalty charges is excluded here, and so is the near miss.
+        """
+        _, text_hits = self._copied_spans(seed_tokens, text_tokens, self.relevance_exclusion_run)
+        return {text_tokens[i] for i in text_hits}
 
     def _prompt_relevance(self, prompt: str, text: str) -> float:
         """Reward carrying the seed's subject forward in the completion's own words.
 
         Two properties this needs, both from issue #16:
 
-        Disjoint from `_prompt_echo_penalty`. Tokens the completion reuses inside a
-        run copied verbatim from the seed are already charged by the echo penalty, so
-        counting them here paid for the same behaviour that the penalty charged for.
-        The policy could not learn which one it was being graded on. They are dropped
-        from the numerator, leaving only vocabulary that was re-embedded in new phrasing.
+        Disjoint from `_prompt_echo_penalty`. Tokens the completion took as part of a
+        run copied from the seed are already the echo penalty's business, so counting
+        them here paid for the behaviour the penalty charged for and the policy could
+        not learn which one it was being graded on. They are dropped from the numerator,
+        leaving only vocabulary that was re-embedded in the completion's own phrasing.
+
+        Note what this does not claim. Copying is never paid, so adding a copied run to
+        a completion can lower its relevance: the run absorbs neighbouring tokens that
+        were carried on their own before. That is the intended direction, not a bug, but
+        it does mean relevance is not monotone in how much of the seed a completion
+        touches. It is monotone in how much of it the completion rewrites.
 
         Scale-free in the seed. The old denominator was the whole seed vocabulary, so
         the score was recall over it: a three-word seed was maxed out by carrying one
@@ -214,22 +252,27 @@ class StyleReward:
         return repeated / max(len(bigrams), 1)
 
     def _prompt_echo_penalty(self, prompt: str, text: str) -> float:
-        """Charge for copying the seed verbatim, above a floor that allows a handoff.
+        """Charge for how much of the seed the completion hands back verbatim.
 
-        This is the only component that grades verbatim reuse; `_prompt_relevance`
-        excludes everything counted here, so the two never move on the same tokens.
+        The charge is the share of the seed's content tokens that ended up inside a run
+        of `echo_ngram_size` or longer copied into the completion, above a floor that
+        leaves room for a handoff. The denominator is the seed, which is fixed for every
+        completion in a GRPO group, so the values a group is ranked on are comparable;
+        the old denominator was the count of shared n-grams and moved per completion.
+
+        `_prompt_relevance` never pays for a token counted here, so no single reuse is
+        both paid and charged. The converse does not hold and is not meant to: reuse
+        under the floor is charged nothing, and is still not paid.
         """
         seed_tokens = self._content_tokens(extract_seed_text(prompt))
         text_tokens = self._content_tokens(text)
         if not seed_tokens or not text_tokens:
             return 0.0
 
-        n = min(self.echo_ngram_size, len(seed_tokens), len(text_tokens))
-        seed_ngrams = self._ngrams(seed_tokens, n) if n >= 2 else set()
-        if not seed_ngrams:
+        seed_hits, _ = self._copied_spans(seed_tokens, text_tokens, self.echo_ngram_size)
+        if not seed_hits:
             return 0.0
-        overlap = len(self._shared_ngrams(seed_tokens, text_tokens)) / len(seed_ngrams)
-        return max(0.0, overlap - self.echo_floor)
+        return max(0.0, len(seed_hits) / len(seed_tokens) - self.echo_floor)
 
     def _reference_copy_penalty(self, text: str) -> float:
         if not self.reference_ngrams:
