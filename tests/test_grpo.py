@@ -173,6 +173,73 @@ def test_echo_penalty_charges_short_seeds(monkeypatch):
     assert reward._prompt_echo_penalty(prompt, "Rivers remember mountains, always.") > 0
 
 
+def test_a_copy_just_under_the_echo_window_still_earns_no_relevance(monkeypatch):
+    """The gap between "charged" and "paid" must not be a place to sit.
+
+    With one shared window for both components, copying exactly `echo_ngram_size - 1`
+    content tokens was charged nothing and paid full relevance, which made trimmed
+    verbatim copying the best-paying strategy under the pair. Relevance excludes copied
+    runs from a shorter length than the penalty charges, so the near miss earns nothing
+    either.
+    """
+    reward = _reward_with_fake_classifier(monkeypatch, echo_ngram_size=4)
+    prompt = build_control_prompt(
+        "The stars were waiting quietly above us while the city forgot to look up.",
+        style="standard",
+        language="en",
+    )
+
+    just_under_the_window = "The stars were waiting, and I had nothing better to do than notice."
+
+    assert reward._prompt_echo_penalty(prompt, just_under_the_window) == 0.0
+    assert reward._prompt_relevance(prompt, just_under_the_window) == 0.0
+
+
+def test_echo_penalty_is_not_diluted_by_padding_the_completion(monkeypatch):
+    """The run length is clamped to the seed, never to the sample being scored.
+
+    Clamping it to the completion let a short verbatim copy widen its own window by
+    appending filler until the copy stopped matching: the same copy went from charged
+    to uncharged, and to paid.
+    """
+    reward = _reward_with_fake_classifier(monkeypatch, echo_floor=0.0)
+    prompt = build_control_prompt(
+        "The stars were waiting quietly above us while the city forgot to look up.",
+        style="standard",
+        language="en",
+    )
+
+    copy = "The stars were waiting quietly above us."
+    padded = copy + " " + " ".join(["filler"] * 11)
+
+    assert reward._prompt_echo_penalty(prompt, copy) > 0
+    assert reward._prompt_echo_penalty(prompt, padded) == pytest.approx(
+        reward._prompt_echo_penalty(prompt, copy)
+    )
+    assert reward._prompt_relevance(prompt, padded) == 0.0
+
+
+def test_echo_penalty_grows_with_how_much_of_the_seed_is_copied(monkeypatch):
+    """The charge is seed coverage, so copying more of the seed always costs more."""
+    reward = _reward_with_fake_classifier(monkeypatch, echo_floor=0.0)
+    seed = "The stars were waiting quietly above us while the city forgot to look up."
+    prompt = build_control_prompt(seed, style="standard", language="en")
+
+    charges = [
+        reward._prompt_echo_penalty(prompt, completion)
+        for completion in [
+            "Nothing of that night stayed with me.",
+            "The stars were waiting, that was all.",
+            "The stars were waiting quietly above us, that was all.",
+            seed,
+        ]
+    ]
+
+    assert charges == sorted(charges)
+    assert charges[0] == 0.0
+    assert charges[-1] == pytest.approx(1.0)
+
+
 def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
     from marcello.classifier.model import StyleClassifier
 
