@@ -37,6 +37,14 @@ reward:
   target_length: 60
   reference_texts_path: data/processed/train
   reference_ngram_size: 8
+  # prompt_relevance and prompt_echo_penalty grade disjoint halves of seed reuse (issue #16):
+  # runs copied verbatim from the seed are charged by the echo penalty only, and vocabulary
+  # re-embedded in new phrasing is paid by relevance only. echo_ngram_size draws that line.
+  echo_ngram_size: 4
+  echo_floor: 0.35
+  # content tokens the completion has to carry to earn the full relevance component,
+  # fixed so the scale does not follow seed length
+  relevance_target_tokens: 8
 
 prompts:
   path: data/processed/prompts
