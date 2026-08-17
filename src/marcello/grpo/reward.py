@@ -68,6 +68,9 @@ class StyleReward:
         tokenizer=None,
         reference_texts_path: str | None = None,
         reference_ngram_size: int = 8,
+        echo_ngram_size: int = 4,
+        echo_floor: float = 0.35,
+        relevance_target_tokens: int = 8,
         min_reward: float = -1.0,
         max_reward: float = 1.0,
     ):
@@ -91,6 +94,9 @@ class StyleReward:
         self.tokenizer = tokenizer
         self.reference_texts_path = reference_texts_path
         self.reference_ngram_size = max(3, reference_ngram_size)
+        self.echo_ngram_size = max(2, echo_ngram_size)
+        self.echo_floor = echo_floor
+        self.relevance_target_tokens = max(1, relevance_target_tokens)
         self.min_reward = min_reward
         self.max_reward = max_reward
         self.reference_ngrams = self._load_reference_ngrams(reference_texts_path)
@@ -142,12 +148,62 @@ class StyleReward:
             return set()
         return {tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)}
 
+    def _shared_ngrams(
+        self, seed_tokens: list[str], text_tokens: list[str]
+    ) -> set[tuple[str, ...]]:
+        """N-grams the completion copies verbatim from the seed.
+
+        Both sides are cut at the same n. The previous version sized the seed and
+        the completion n-grams independently, so a seed shorter than the window
+        produced 3-grams against the completion's 4-grams and the intersection was
+        empty by construction: short seeds could never be charged for echoing.
+        """
+        n = min(self.echo_ngram_size, len(seed_tokens), len(text_tokens))
+        if n < 2:
+            return set()
+        return self._ngrams(seed_tokens, n) & self._ngrams(text_tokens, n)
+
+    def _echoed_tokens(self, seed_tokens: list[str], text_tokens: list[str]) -> set[str]:
+        """Seed tokens the completion reuses inside a verbatim run, not on its own."""
+        return {token for ngram in self._shared_ngrams(seed_tokens, text_tokens) for token in ngram}
+
     def _prompt_relevance(self, prompt: str, text: str) -> float:
-        seed_tokens = set(self._content_tokens(extract_seed_text(prompt)))
-        text_tokens = set(self._content_tokens(text))
+        """Reward carrying the seed's subject forward in the completion's own words.
+
+        Two properties this needs, both from issue #16:
+
+        Disjoint from `_prompt_echo_penalty`. Tokens the completion reuses inside a
+        run copied verbatim from the seed are already charged by the echo penalty, so
+        counting them here paid for the same behaviour that the penalty charged for.
+        The policy could not learn which one it was being graded on. They are dropped
+        from the numerator, leaving only vocabulary that was re-embedded in new phrasing.
+
+        Scale-free in the seed. The old denominator was the whole seed vocabulary, so
+        the score was recall over it: a three-word seed was maxed out by carrying one
+        word, and a long seed put the ceiling out of reach. Seed length varies a lot,
+        because `split_seed_and_continuation` falls back to a line split for poems
+        (`src/marcello/grpo/prompting.py:74`). The denominator is now the fixed budget
+        `relevance_target_tokens`, so one carried token is worth the same everywhere.
+
+        The budget is deliberately not capped at the seed's own vocabulary size. That
+        variant reads better (a short seed could still reach 1.0) but it re-creates the
+        saturation this is meant to remove, and saturation is worse than a low ceiling
+        under GRPO: advantages are normalized inside a group that shares one prompt, so
+        a component every completion maxes out contributes no spread and therefore no
+        gradient. A short seed earns less from this component; it still ranks its
+        completions against each other.
+        """
+        seed_tokens = self._content_tokens(extract_seed_text(prompt))
+        text_tokens = self._content_tokens(text)
         if not seed_tokens or not text_tokens:
             return 0.0
-        return len(seed_tokens & text_tokens) / len(seed_tokens)
+
+        carried = set(seed_tokens) & set(text_tokens)
+        carried -= self._echoed_tokens(seed_tokens, text_tokens)
+        if not carried:
+            return 0.0
+
+        return min(1.0, len(carried) / self.relevance_target_tokens)
 
     def _repetition_penalty(self, text: str) -> float:
         tokens = self._content_tokens(text)
@@ -158,17 +214,22 @@ class StyleReward:
         return repeated / max(len(bigrams), 1)
 
     def _prompt_echo_penalty(self, prompt: str, text: str) -> float:
+        """Charge for copying the seed verbatim, above a floor that allows a handoff.
+
+        This is the only component that grades verbatim reuse; `_prompt_relevance`
+        excludes everything counted here, so the two never move on the same tokens.
+        """
         seed_tokens = self._content_tokens(extract_seed_text(prompt))
         text_tokens = self._content_tokens(text)
         if not seed_tokens or not text_tokens:
             return 0.0
 
-        seed_ngrams = self._ngrams(seed_tokens, min(4, len(seed_tokens)))
-        text_ngrams = self._ngrams(text_tokens, min(4, len(text_tokens)))
-        if not seed_ngrams or not text_ngrams:
+        n = min(self.echo_ngram_size, len(seed_tokens), len(text_tokens))
+        seed_ngrams = self._ngrams(seed_tokens, n) if n >= 2 else set()
+        if not seed_ngrams:
             return 0.0
-        overlap = len(seed_ngrams & text_ngrams) / len(seed_ngrams)
-        return max(0.0, overlap - 0.35)
+        overlap = len(self._shared_ngrams(seed_tokens, text_tokens)) / len(seed_ngrams)
+        return max(0.0, overlap - self.echo_floor)
 
     def _reference_copy_penalty(self, text: str) -> float:
         if not self.reference_ngrams:

@@ -101,6 +101,78 @@ def test_reward_penalizes_echo_repetition_and_reference_copy(tmp_path, monkeypat
     assert scores[0] > scores[1]
 
 
+def _reward_with_fake_classifier(monkeypatch, **kwargs):
+    monkeypatch.setattr(
+        "marcello.grpo.reward.StyleClassifier.from_pretrained",
+        lambda _: FakeClassifier(),
+    )
+    kwargs.setdefault("length_bonus_weight", 0.0)
+    return StyleReward(classifier_path="unused", **kwargs)
+
+
+def test_prompt_relevance_and_echo_penalty_never_grade_the_same_tokens(monkeypatch):
+    """Issue #16: the two components must measure disjoint things.
+
+    Copying the seed is charged once, by the echo penalty, and earns no relevance.
+    Carrying the seed's vocabulary into new phrasing earns relevance and is charged
+    nothing. No completion can be paid and charged for one reuse.
+    """
+    reward = _reward_with_fake_classifier(monkeypatch)
+    prompt = build_control_prompt(
+        "The stars were waiting quietly above us.",
+        style="standard",
+        language="en",
+    )
+
+    copied = "The stars were waiting quietly above us, and nothing moved."
+    reworded = "I kept waiting under them, quietly, until the stars felt closer than the city."
+
+    assert reward._prompt_echo_penalty(prompt, copied) > 0
+    assert reward._prompt_relevance(prompt, copied) == 0.0
+
+    assert reward._prompt_echo_penalty(prompt, reworded) == 0.0
+    assert reward._prompt_relevance(prompt, reworded) > 0
+
+
+def test_prompt_relevance_ceiling_does_not_depend_on_seed_length(monkeypatch):
+    """Issue #16: relevance was recall over the seed, so its scale moved with the seed.
+
+    The same carried vocabulary now scores the same whether the seed is one line or a
+    whole poem, and the ceiling stays reachable on the long seed.
+    """
+    reward = _reward_with_fake_classifier(monkeypatch, relevance_target_tokens=4)
+
+    short_seed = build_control_prompt("Rivers remember mountains.", "poetic", "en")
+    long_seed = build_control_prompt(
+        "Rivers remember mountains.\n"
+        "Harbors forget every vessel that ever wintered against their stones.\n"
+        "Lanterns keep burning through arguments no one finished.\n"
+        "Bridges outlast whichever quarrel first funded them.",
+        "poetic",
+        "en",
+    )
+    completion = "Mountains stay in how the rivers move, long after nobody remembers why."
+
+    assert reward._prompt_relevance(short_seed, completion) == pytest.approx(
+        reward._prompt_relevance(long_seed, completion)
+    )
+
+    carries_the_budget = "Rivers, mountains, harbors and lanterns all keep their own accounting."
+    assert reward._prompt_relevance(long_seed, carries_the_budget) == pytest.approx(1.0)
+
+
+def test_echo_penalty_charges_short_seeds(monkeypatch):
+    """A seed shorter than the n-gram window used to be uncharged by construction.
+
+    Seed and completion n-grams were sized independently, so a 3-token seed produced
+    3-grams against the completion's 4-grams and the intersection was always empty.
+    """
+    reward = _reward_with_fake_classifier(monkeypatch, echo_floor=0.0)
+    prompt = build_control_prompt("Rivers remember mountains.", "poetic", "en")
+
+    assert reward._prompt_echo_penalty(prompt, "Rivers remember mountains, always.") > 0
+
+
 def test_classifier_from_pretrained_reads_saved_config(tmp_path, monkeypatch):
     from marcello.classifier.model import StyleClassifier
 
