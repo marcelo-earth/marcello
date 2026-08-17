@@ -35,7 +35,7 @@ def test_correlate_flags_a_pair_that_moves_together():
 
     row = ari.correlate(breakdowns, "prompt_relevance", "prompt_echo_penalty")
 
-    assert row["r"] == pytest.approx(1.0)
+    assert row["pearson"] == pytest.approx(1.0)
     assert row["verdict"] == "redundant"
 
 
@@ -47,8 +47,38 @@ def test_correlate_clears_a_pair_that_does_not():
 
     row = ari.correlate(breakdowns, "prompt_relevance", "prompt_echo_penalty")
 
-    assert abs(row["r"]) <= ari.INDEPENDENT_BELOW
+    assert abs(row["pearson"]) <= ari.INDEPENDENT_BELOW
     assert row["verdict"] == "independent"
+
+
+def test_correlate_catches_a_pair_pearson_would_clear():
+    """Monotone but curved coupling reads near zero on Pearson and high on Spearman."""
+    breakdowns = [
+        {"prompt_relevance": x / 20, "prompt_echo_penalty": (x / 20) ** 20} for x in range(21)
+    ]
+
+    row = ari.correlate(breakdowns, "prompt_relevance", "prompt_echo_penalty")
+
+    assert abs(row["pearson"]) < ari.REDUNDANT_ABOVE
+    assert row["spearman"] == pytest.approx(1.0)
+    assert row["verdict"] == "redundant"
+
+
+def test_correlate_reports_how_often_both_components_fired():
+    """Co-activation is reported for the sparse components, and never drives the verdict.
+
+    style_score and length_bonus are on for every completion, so their co-activation is
+    1.0 by construction. Judging on it would call every always-on pair redundant.
+    """
+    breakdowns = [
+        {"style_score": s, "length_bonus": b}
+        for s, b in [(0.5, 0.1), (0.6, 0.05), (0.55, 0.09), (0.52, 0.02), (0.58, 0.07)]
+    ]
+
+    row = ari.correlate(breakdowns, "style_score", "length_bonus")
+
+    assert row["co_activation"] == pytest.approx(1.0)
+    assert row["verdict"] != "redundant"
 
 
 def test_correlate_reports_a_component_that_never_varies():
@@ -57,7 +87,7 @@ def test_correlate_reports_a_component_that_never_varies():
 
     row = ari.correlate(breakdowns, "prompt_relevance", "prompt_echo_penalty")
 
-    assert row["r"] is None
+    assert row["pearson"] is None
     assert row["verdict"] == "flat"
 
 
