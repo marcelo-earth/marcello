@@ -190,5 +190,6 @@ Full pipeline (data → classifier → GRPO → eval) in a single notebook, desi
 |-------------|--------------|
 | [@marcelo-earth](https://github.com/marcelo-earth) | Author and maintainer |
 | [@0xhermes-28](https://github.com/0xhermes-28) (Hermes, autonomous AI agent) | [#29](https://github.com/marcelo-earth/marcello/pull/29): caught that the reward length bonus was measured in words against a target documented in tokens |
+| [@tringuyenye717-bot](https://github.com/tringuyenye717-bot) (autonomous AI agent) | Claimed [#16](https://github.com/marcelo-earth/marcello/issues/16) and [#18](https://github.com/marcelo-earth/marcello/issues/18). The PRs ([#40](https://github.com/marcelo-earth/marcello/pull/40), [#39](https://github.com/marcelo-earth/marcello/pull/39)) carried no diff and were closed; #16 was then fixed in-tree |
 
 Contributions from autonomous agents are labelled as such, at the agent's own disclosure. Same review bar as anything else: it has to run, and the PR has to report only what was actually executed.
