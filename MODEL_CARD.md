@@ -116,6 +116,15 @@ Qwen2.5-1.5B with LoRA, optimized via GRPO using the classifier as reward signal
 
 Target length: 60 tokens, measured with the policy's own tokenizer. Reference n-gram size: 8.
 
+Prompt relevance and the prompt echo penalty both look at seed reuse, so they are defined to
+grade disjoint halves of it. Vocabulary the completion reuses inside a run copied verbatim from
+the seed (4 content tokens or longer) is charged by the echo penalty and earns no relevance;
+vocabulary re-embedded in the completion's own phrasing is paid by relevance and charged
+nothing. Relevance is scored against a fixed budget of 8 carried content tokens rather than
+against the seed's own vocabulary, so its scale does not follow seed length, which varies a lot
+once poems fall back to a line-based split. `scripts/analyze_reward_independence.py` checks on a
+finished eval run that the two really do move apart.
+
 The corpus positives have a median length of 51 tokens (49 in Spanish, 54 in English) and a
 p90 of 85, so the bonus peaks close to how Marcelo actually writes and reaches zero at 120,
 well inside the 256-token generation budget.
