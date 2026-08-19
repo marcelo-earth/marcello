@@ -26,6 +26,7 @@ from peft import LoraConfig, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
+from marcello.grpo.diagnostics import RewardVarianceLog
 from marcello.grpo.reward import StyleReward
 
 
@@ -76,6 +77,8 @@ class MarceLLoGRPOConfig:
     # output
     output_dir: str = "outputs/grpo"
     use_wandb: bool = False
+    # print the per-batch group reward spread as the run goes, not just at the end
+    log_reward_variance: bool = True
 
 
 class MarceLLoGRPOTrainer:
@@ -92,6 +95,9 @@ class MarceLLoGRPOTrainer:
         self.tokenizer = None
         self.reward_fn = None
         self._trainer = None
+        self.variance_log = RewardVarianceLog(
+            group_size=config.num_generations, output_dir=config.output_dir
+        )
 
     def _load_model(self):
         """Load the base model with LoRA applied."""
@@ -225,6 +231,11 @@ class MarceLLoGRPOTrainer:
         """Build a reward function compatible with TRL's GRPOTrainer.
 
         TRL expects: reward_fn(completions: list[str]) -> list[float]
+
+        Scoring with the per-component breakdown costs nothing extra and is what
+        makes the group spread observable: the totals alone cannot say whether a
+        flat group is flat because every component agreed or because only one of
+        them was ever moving. See issue #18.
         """
         reward = self.reward_fn
 
@@ -232,8 +243,13 @@ class MarceLLoGRPOTrainer:
             texts = [c[0]["content"] if isinstance(c, list) else c for c in completions]
             prompts = kwargs.get("prompts") or kwargs.get("prompt")
             normalized_prompts = self._normalize_prompts(prompts, expected=len(texts))
-            scores = reward.score(texts, prompts=normalized_prompts)
-            return scores
+            breakdowns = reward.score(texts, prompts=normalized_prompts, return_breakdown=True)
+
+            groups = self.variance_log.record(breakdowns, prompts=normalized_prompts)
+            if self.config.log_reward_variance:
+                print(RewardVarianceLog.format_batch(groups))
+
+            return [b["total"] for b in breakdowns]
 
         return reward_function
 
@@ -257,6 +273,14 @@ class MarceLLoGRPOTrainer:
         )
 
         self._trainer.train()
+
+        # what the run actually had to learn from, printed where the run ends so it
+        # is read before any conclusion is drawn from the eval numbers
+        print("\n" + self.variance_log.format_summary())
+        written = self.variance_log.write()
+        if written:
+            print(f"Per-group reward record: {written}")
+
         self.save(Path(self.config.output_dir) / "final")
 
     def save(self, path: Path):
