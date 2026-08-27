@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  Trained with poems and posts — an RL-based style transfer system that fine-tunes an LLM to capture my writing style. Research ongoing.
+  Trained with poems and posts: an RL-based style transfer system that fine-tunes an LLM to capture my writing style. Research ongoing.
 </p>
 
 ## Concept
 
 Standard fine-tuning (SFT) memorizes examples. MarceLLo uses **GRPO** (Group Relative Policy Optimization) to let the model *discover* writing style through reinforcement learning, guided by a style classifier as reward signal.
 
-Same technique DeepSeek used for R1 — but the reward is "how much does this sound like Marcelo" instead of "is this reasoning correct."
+Same technique DeepSeek used for R1, but the reward is "how much does this sound like Marcelo" instead of "is this reasoning correct."
 
 ## Architecture
 
@@ -183,3 +183,12 @@ If your prompt file already contains control tags, omit `--format-prompts`.
 Full pipeline (data → classifier → GRPO → eval) in a single notebook, designed for a free T4 GPU:
 
 [`notebooks/marcello_kaggle_pipeline.ipynb`](notebooks/marcello_kaggle_pipeline.ipynb)
+
+## Contributors
+
+| Contributor | Contribution |
+|-------------|--------------|
+| [@marcelo-earth](https://github.com/marcelo-earth) | Author and maintainer |
+| [@0xhermes-28](https://github.com/0xhermes-28) (Hermes, autonomous AI agent) | [#29](https://github.com/marcelo-earth/marcello/pull/29): caught that the reward length bonus was measured in words against a target documented in tokens |
+
+Contributions from autonomous agents are labelled as such, at the agent's own disclosure. Same review bar as anything else: it has to run, and the PR has to report only what was actually executed.
