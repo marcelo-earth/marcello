@@ -25,7 +25,9 @@ RL-based writing style transfer system that fine-tunes an LLM to capture a perso
 
 ### Model Description
 
-MarceLLo uses Group Relative Policy Optimization (GRPO) to let a base LLM discover a writing style through reinforcement learning, rather than memorizing examples via standard fine-tuning. A DeBERTa-v3-small classifier trained on the author's writing serves as the reward model, scoring "how much does this sound like Marcelo."
+MarceLLo uses Group Relative Policy Optimization (GRPO) to let a base LLM discover a writing style through reinforcement learning. A DeBERTa-v3-small classifier trained on the author's writing serves as the reward model, scoring "how much does this sound like Marcelo." Whether this beats plain supervised fine-tuning is not yet measured: an SFT baseline exists in the repo as the control, and the comparison has not been run.
+
+**Status:** the published weights are v0.1 and predate the corpus and classifier fixes described below. No GRPO run has been made against the current classifier.
 
 - **Developed by:** Marcelo
 - **Model type:** Causal LM with LoRA adapter, trained via GRPO
@@ -49,9 +51,11 @@ This model captures one person's writing style from a small corpus. It is not a 
 
 ## Bias, Risks, and Limitations
 
-- Trained on a small, single-author corpus (35 texts). The model may overfit to specific topics (introspection, learning, curiosity, poetry).
+- The reward classifier is trained on a small, single-author corpus (253 positives, 253 negatives after balancing; the validation split is 76 texts), so every metric carries a wide interval. The model may overfit to specific topics (introspection, learning, curiosity, poetry).
 - Bilingual (es/en) but with uneven coverage — more poetic content in Spanish, more expository in English.
-- The style classifier reward can be gamed: the model may learn superficial stylistic tics rather than deeper voice characteristics.
+- The style classifier reward can be gamed: the model may learn superficial stylistic tics rather than deeper voice characteristics. Reading the top-reward completions after every run is part of the plan for exactly this reason.
+- The classifier sits at the frozen-feature ceiling (see below), so a better reward needs a different approach, not more head training.
+- The negative pool relies on rewrites from a 1.5B model, which may carry grammar artifacts the classifier could learn as "negative". Part of the verse negatives is written for the purpose rather than quoted.
 - Not evaluated for factual accuracy — this is a style model, not a knowledge model.
 
 ## How to Get Started with the Model
@@ -77,22 +81,74 @@ python scripts/generate.py \
 
 ### Training Data
 
-- **Positive samples:** 27 poems/prose pieces (es) + 8 blog posts (en) = 35 total
-- **Negative samples:** 23 pre-written contrastive texts (same topics, generic voice)
-- **Split:** 85/15 train/val, seed 42
+- **Positive samples:** 297 paragraph-level pieces from the author (poems, prose, blog posts; es and en), 253 kept after balancing
+- **Negative pool:** 405 texts from 7 sources, 253 kept after balancing:
+
+| Source | Count |
+|--------|-------|
+| Pre-written prose | 69 |
+| Wikipedia | 21 |
+| Neutral rewrites (same content, voice stripped) | 89 |
+| Poetic rewrites (another poetic voice, same theme) | 89 |
+| Curated Spanish verse (not the author's) | 85 |
+| English tech blog prose | 28 |
+| German, Italian, French, Portuguese | 24 |
+
+- **Balancing:** positives and negatives are matched on length bin, language and verse form together, so every surface cell is equal (112/112 English prose, 22/22 Spanish prose, 119/119 Spanish verse). Each of these was added because something visible without reading the text separated the classes.
+- **Split:** 85/15 train/val, seed 42 (506 samples total)
+- **Reserved for the probe:** Bécquer and Darío are never used as negatives, so the sanity probe keeps measuring generalization.
 
 ### Training Procedure
 
-Two-phase pipeline:
+Pipeline: style classifier, sanity probe gate, then GRPO. An SFT baseline and a separate judge classifier support the evaluation.
 
-**Phase 1 — Style Classifier (Reward Model)**
+**Phase 1: Style Classifier (Reward Model)**
 
-DeBERTa-v3-small fine-tuned as a binary classifier (Marcelo vs. not-Marcelo).
+DeBERTa-v3-small as a binary classifier (Marcelo vs. not-Marcelo). The encoder is fully frozen and only the head is trained.
 
-- Full fine-tune (no frozen layers)
-- lr: 2e-5, batch: 16, epochs: 5, warmup: 10%, max_length: 512
+- Frozen encoder (`freeze_encoder_layers: 6`), LayerNorm plus per-dimension feature standardization before the head
+- lr: 1e-3, batch: 16, epochs: 20, warmup: 10%, weight decay: 0.01, max_length: 512
 
-**Phase 2 — GRPO Training**
+Per-dimension standardization (a mean and std fitted on the cached training features and shipped as buffers) fixed a head that was dominated by high-variance dimensions: on the same split, logistic regression on the same frozen features reached AUC 0.903 against the head's 0.827.
+
+Validation metrics on the final corpus: accuracy 0.8026, AUC-ROC 0.8878, F1 0.8101. These dropped every time a shortcut was removed from the data, which is intended: 0.80 with no shortcuts left is worth more than 0.90 where counting words was enough.
+
+**Sanity probe (hard gate)**
+
+Before any GRPO run, the classifier scores out-of-distribution texts (encyclopedic prose, public-domain poetry, generic LLM prose, English tech blogs, German, Italian) against held-out real samples as control. The gate passed on 2026-07-26:
+
+| Measure | Value |
+|---------|-------|
+| Mean OOD score | 0.155 |
+| Max OOD score | 0.392 |
+| Control (held-out real samples) | 0.824 |
+| Margin | +0.669 |
+| Failures | 0 |
+
+The margin on the original corpus was -0.063 (11 of 11 failures). The Italian probe passes at 0.3918 against a 0.4 threshold, so it is the one text that would flip the gate. The probe has to be re-run after any change to the corpus or classifier.
+
+**Frozen-feature ceiling**
+
+5-fold CV on frozen features, 506 samples (`scripts/compare_backbones.py`). This is what a frozen-encoder head can reach:
+
+| Backbone | Accuracy | AUC |
+|----------|----------|-----|
+| microsoft/deberta-v3-small | 0.820 ± 0.034 | 0.885 ± 0.030 |
+| FacebookAI/xlm-roberta-base | 0.793 ± 0.033 | 0.884 ± 0.027 |
+| intfloat/multilingual-e5-small | 0.779 ± 0.037 | 0.864 ± 0.029 |
+| paraphrase-multilingual-MiniLM-L12-v2 | 0.709 ± 0.048 | 0.807 ± 0.049 |
+
+The trained classifier (0.8026 / 0.8878) is at this ceiling.
+
+**Judge classifier**
+
+A second classifier trained on a different split (`--resplit-seed 1337`) scores completions at evaluation time only, so the policy is never optimized against the model that grades it.
+
+**SFT baseline (control, not yet run)**
+
+LoRA adapter trained on positives only (74 control-prompt to continuation pairs), r=16, alpha=32, lr 1e-4, batch 2 x 4 accumulation, 3 epochs.
+
+**Phase 2: GRPO Training**
 
 Qwen2.5-1.5B with LoRA, optimized via GRPO using the classifier as reward signal.
 
@@ -144,7 +200,9 @@ well inside the 256-token generation budget.
 
 ## Evaluation
 
-### Metrics
+**Results are held back.** No GRPO run has been made against the current classifier, so this card reports no generation scores. Reward-classifier scores alone are not evidence of style transfer, since the model can be optimized against that classifier. The comparison table (base, few-shot, SFT, GRPO, GRPO from SFT) will be added once independent judges and a blinded human evaluation have run.
+
+Metrics the evaluation produces:
 
 - **Style Score:** average classifier P(Marcelo) on generated text
 - **Perplexity:** fluency measure via base model (lower = more fluent)
@@ -186,7 +244,7 @@ Kaggle T4 GPU (16 GB VRAM), free tier
 
 ### v0.1 — 2026-03-28
 
-First end-to-end run. Classifier trained, reward pipeline stable, eval prompts in place.
+First end-to-end run. Classifier trained, reward pipeline stable, eval prompts in place. The published weights are from this version and predate the corpus and classifier fixes above.
 
 ## Model Card Authors
 
