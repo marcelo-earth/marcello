@@ -37,6 +37,16 @@ ENGLISH_HINTS = {
     "into",
     "about",
     "because",
+    "is",
+    "are",
+    "was",
+    "of",
+    "to",
+    "it",
+    "an",
+    "how",
+    "what",
+    "can",
 }
 
 

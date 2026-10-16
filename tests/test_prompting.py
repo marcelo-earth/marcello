@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from marcello.grpo.prompting import ensure_control_prompt, is_control_prompt
+from marcello.grpo.prompting import ensure_control_prompt, infer_language, is_control_prompt
 
 
 def test_ensure_control_prompt_wraps_raw_prompt():
@@ -24,3 +24,9 @@ def test_ensure_control_prompt_preserves_existing_control_prompt():
     )
 
     assert ensure_control_prompt(prompt, style="poetic", language="es") == prompt
+
+
+def test_infer_language_short_english_without_the_old_hints():
+    # corpus texts like these used to fall through to the "es" default
+    assert infer_language("Attention is all it takes.") == "en"
+    assert infer_language("Twitter shows how incentives shape behavior.") == "en"
