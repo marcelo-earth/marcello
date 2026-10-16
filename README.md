@@ -15,7 +15,7 @@
 
 ## Concept
 
-Standard fine-tuning (SFT) memorizes examples. MarceLLo uses **GRPO** (Group Relative Policy Optimization) to let the model *discover* writing style through reinforcement learning, guided by a style classifier as reward signal.
+MarceLLo uses **GRPO** (Group Relative Policy Optimization) to let the model *discover* writing style through reinforcement learning, guided by a style classifier as reward signal. Whether this beats plain supervised fine-tuning is an open question: the SFT baseline (`make sft`) exists to measure it, and the comparison has not been published yet.
 
 Same technique DeepSeek used for R1, but the reward is "how much does this sound like Marcelo" instead of "is this reasoning correct."
 
@@ -25,15 +25,18 @@ Same technique DeepSeek used for R1, but the reward is "how much does this sound
 graph TD
     subgraph "Phase 1: Data"
         A[Collect Writing Samples] --> B[Process & Clean]
-        B --> C[Negative Sampling<br/>Contrastive Pairs]
+        B --> C[Negative Sampling<br/>7 sources]
     end
 
     subgraph "Phase 2: Reward Model"
         D[DeBERTa-v3-small<br/>+ Classification Head]
         D -->|"P(Marcelo) → 0..1"| E[Style Score]
+        D --> P{Sanity probe<br/>hard gate}
+        D -.->|"different split"| J[Judge classifier<br/>evaluation only]
     end
 
-    subgraph "Phase 3: GRPO Training"
+    subgraph "Phase 3: Training"
+        S[SFT baseline<br/>control]
         F[Base Model: Qwen2.5-1.5B]
         F -->|"1. Generate G completions"| G[Group Sampling]
         G -->|"2. Score each"| E
@@ -42,11 +45,14 @@ graph TD
     end
 
     subgraph "Phase 4: Evaluation"
-        I[Style Score · Perplexity · Distinct-N<br/>A/B Comparison · Human Eval]
+        I[Style Score · Perplexity · Distinct-N<br/>Judge Score · A/B Comparison · Human Eval]
     end
 
     C --> D
+    P -->|"pass"| F
     F --> I
+    S --> I
+    J --> I
 ```
 
 ## GRPO Key Insight
@@ -66,10 +72,12 @@ marcello/
 ├── configs/
 │   ├── classifier.yaml    # Style classifier hyperparams
 │   ├── grpo.yaml           # GRPO training config
+│   ├── sft.yaml            # SFT baseline config
 │   └── data.yaml           # Data pipeline config
 ├── src/marcello/
 │   ├── data/               # Collection, processing, negative sampling
 │   ├── classifier/         # Style classifier (reward model)
+│   ├── sft/                # SFT baseline
 │   ├── grpo/               # GRPO trainer, reward wrapper, sampling
 │   ├── eval/               # Metrics, comparison, reporting
 │   └── utils/              # Logging, helpers
@@ -86,13 +94,19 @@ pip install -e ".[dev]"
 
 # Place writing samples in data/raw/writing_samples/ (.txt or .jsonl)
 
-# Process data and generate contrastive pairs
+# Process data and build the negative pool (make data, make negatives)
 python scripts/collect_data.py --config configs/data.yaml
 
 # Train the style classifier (reward model)
 python scripts/train_classifier.py --config configs/classifier.yaml
 
-# Run GRPO training
+# Hard gate: the classifier must pass the sanity probe before any GRPO run
+python scripts/sanity_probe.py --classifier outputs/classifier/best
+
+# Optional: SFT baseline, the control for the GRPO comparison
+python scripts/train_sft.py --config configs/sft.yaml
+
+# Run GRPO training (only after the probe passes)
 python scripts/train_grpo.py --config configs/grpo.yaml
 
 # Generate with the GRPO adapter
@@ -108,9 +122,11 @@ python scripts/evaluate.py --model outputs/grpo/final --prompts data/eval_prompt
 |-----------|-------|-----|
 | Style Classifier | `microsoft/deberta-v3-small` | Strong text classification, small footprint |
 | Base LLM | `Qwen/Qwen2.5-1.5B` | Good quality at trainable size, fits on free GPUs |
-| Negative Sampling | Pre-written contrastive texts | Same topics, generic voice (no Marcelo style) |
+| Negative Sampling | 7 sources (see PLAN.md Step 3) | Same topics, generic voice; pre-written texts are a small minority of the pool |
 
 ## Pre-trained Weights
+
+> These artifacts are **v0.1**. They predate the corpus and classifier fixes recorded in PLAN.md and will be re-uploaded after the GRPO run tracked in #7.
 
 | Artifact | Hugging Face |
 |----------|--------------|

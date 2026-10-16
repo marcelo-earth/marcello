@@ -114,7 +114,7 @@ hard, which is the opposite of what I expected before measuring.
 - `scripts/train_classifier.py --resplit-seed 1337 --output-dir outputs/classifier/judge`
   trains that judge on a different split.
 - Per-component reward breakdown exists in `reward.py`.
-- Blinded human eval: not written yet.
+- Blinded human eval: `scripts/build_human_eval.py` (`make human-eval`) builds the blinded sheet from an evaluation output.
 - `data/eval_prompts.txt` is frozen. Do not edit it.
 
 ## Step 3 — Grow and fix the corpus
