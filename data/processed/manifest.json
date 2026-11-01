@@ -1,16 +1,16 @@
 {
   "counts_per_class": {
     "train": {
-      "positive": 221,
-      "negative": 221
+      "positive": 238,
+      "negative": 239
     },
     "val": {
-      "positive": 39,
-      "negative": 39
+      "positive": 43,
+      "negative": 42
     }
   },
   "negative_source_counts": {
-    ".": 87,
+    ".": 282,
     "blog": 28,
     "multilingual": 24,
     "poetry": 85,
@@ -18,27 +18,26 @@
     "wikipedia": 21
   },
   "surface_cell_counts": {
-    "(0, 'en', False)": 10,
-    "(0, 'es', False)": 14,
-    "(0, 'es', True)": 10,
-    "(1, 'en', False)": 7,
+    "(0, 'en', False)": 11,
+    "(0, 'es', False)": 23,
+    "(0, 'es', True)": 12,
+    "(1, 'en', False)": 10,
     "(1, 'es', False)": 5,
     "(1, 'es', True)": 27,
-    "(2, 'en', False)": 6,
-    "(2, 'es', True)": 18,
+    "(2, 'en', False)": 11,
+    "(2, 'es', True)": 28,
     "(3, 'en', False)": 10,
-    "(3, 'es', False)": 1,
-    "(3, 'es', True)": 22,
-    "(4, 'en', False)": 18,
-    "(4, 'es', False)": 2,
-    "(4, 'es', True)": 24,
-    "(5, 'en', False)": 15,
-    "(5, 'es', True)": 8,
-    "(6, 'en', False)": 28,
-    "(6, 'es', False)": 2,
-    "(6, 'es', True)": 7,
-    "(7, 'en', False)": 21,
-    "(7, 'es', True)": 5
+    "(3, 'es', False)": 2,
+    "(3, 'es', True)": 30,
+    "(4, 'en', False)": 27,
+    "(4, 'es', False)": 1,
+    "(4, 'es', True)": 15,
+    "(5, 'en', False)": 29,
+    "(5, 'es', False)": 2,
+    "(5, 'es', True)": 7,
+    "(6, 'en', False)": 24,
+    "(6, 'es', True)": 5,
+    "(7, 'en', False)": 2
   },
-  "text_hash": "60028d4cac0ada5e3078268f68a4582b37f34d63ad3486876dda6e8e4a020a2d"
+  "text_hash": "dcb389bbb186b256e9104d1dec6ad3663728002487dd89c550059e79db66303e"
 }
