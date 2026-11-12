@@ -14,7 +14,7 @@ import modal
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "/root/marcello"
-OUTPUT = "data/raw/negative_samples/base_generations_gpu.jsonl"
+OUTPUT = "data/raw/base_generations/gpu.jsonl"
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
