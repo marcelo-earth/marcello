@@ -105,3 +105,27 @@ class TestNegativeSampler:
 
         assert len(negatives) == 1
         assert negatives[0] != texts[0]  # shuffled should differ
+
+
+def test_prewritten_negatives_carry_their_source(tmp_path):
+    import json
+
+    from datasets import Dataset
+
+    from marcello.data.negative_sampler import NegativeSampler
+
+    (tmp_path / "loose.txt").write_text("Un párrafo genérico.\n\nOtro párrafo.", encoding="utf-8")
+    (tmp_path / "gen.jsonl").write_text(json.dumps({"text": "generado"}) + "\n", encoding="utf-8")
+    (tmp_path / "poetry").mkdir()
+    (tmp_path / "poetry" / "a.jsonl").write_text(
+        json.dumps({"text": "verso"}) + "\n", encoding="utf-8"
+    )
+
+    sampler = NegativeSampler(prewritten_path=str(tmp_path), seed=0)
+    dataset = sampler.build_contrastive_dataset(Dataset.from_dict({"text": ["mío"]}))
+    source_of = dict(zip(dataset["text"], dataset["source"]))
+
+    assert source_of["mío"] == "positive"
+    assert source_of["Otro párrafo."] == "prewritten"
+    assert source_of["generado"] == "gen"
+    assert source_of["verso"] == "poetry"

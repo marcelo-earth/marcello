@@ -89,6 +89,7 @@ def length_matched_indices(
     seed: int = 42,
     num_bins: int = 8,
     match_form: bool = True,
+    groups: list[str] | None = None,
 ) -> list[int]:
     """Indices of a subset where every surface stratum is class balanced.
 
@@ -100,6 +101,12 @@ def length_matched_indices(
     strata. Length alone was not enough: Spanish verse ran 113 positives to 74
     negatives, a 60% base rate for Marcelo that the probe read back almost
     exactly as Becquer's 0.61.
+
+    With `groups` (one source label per text), negatives inside a stratum are
+    taken round-robin across sources instead of at random. Random trimming kept
+    4 of 24 non-Spanish negatives, because they share cells with hundreds of
+    Spanish ones, so the probe's German text barely had anything to learn from.
+    Which cells survive and how many texts each keeps does not change.
     """
     buckets = _strata_buckets(texts, labels, num_bins, match_form)
 
@@ -111,9 +118,29 @@ def length_matched_indices(
         keep = min(len(positives), len(negatives))
         if not keep:
             continue
-        kept += rng.sample(positives, keep) + rng.sample(negatives, keep)
+        kept += rng.sample(positives, keep)
+        if groups is None:
+            kept += rng.sample(negatives, keep)
+        else:
+            kept += _round_robin(negatives, groups, keep, rng)
 
     return sorted(kept)
+
+
+def _round_robin(indices: list[int], groups: list[str], keep: int, rng: random.Random) -> list[int]:
+    """Pick `keep` indices, one group at a time, so no source crowds out the rest."""
+    by_group: dict[str, list[int]] = {}
+    for index in indices:
+        by_group.setdefault(groups[index], []).append(index)
+    queues = [rng.sample(members, len(members)) for _, members in sorted(by_group.items())]
+    rng.shuffle(queues)
+
+    picked: list[int] = []
+    while len(picked) < keep:
+        for queue in queues:
+            if queue and len(picked) < keep:
+                picked.append(queue.pop())
+    return picked
 
 
 def surface_cell_counts(

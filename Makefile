@@ -1,4 +1,4 @@
-.PHONY: install lint format test data verify-corpus negatives classifier probe judge sft train eval human-eval push clean
+.PHONY: install lint format test data verify-corpus negatives base-negatives classifier probe judge sft train eval human-eval push clean
 
 install:
 	pip install -e ".[dev]"
@@ -22,6 +22,10 @@ verify-corpus:
 
 negatives:
 	python scripts/generate_negatives.py --model Qwen/Qwen2.5-1.5B-Instruct
+
+# raw generations stay out of the pool until cleaned; rebuild with `make data` after
+base-negatives:
+	python scripts/clean_base_negatives.py
 
 classifier:
 	python scripts/train_classifier.py --config configs/classifier.yaml
