@@ -35,3 +35,6 @@ output:
   balance_classes: true
   # take negatives round-robin across sources inside each surface cell
   spread_sources: true
+  # sources outside the balancer: languages Marcelo never writes, where the
+  # language really is evidence of "not Marcelo"
+  always_keep_sources: [multilingual]
