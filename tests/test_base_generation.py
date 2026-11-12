@@ -25,6 +25,16 @@ def test_cut_at_first_tag_handles_html_and_closing_tags():
     assert cut_at_first_tag("Una línea<br>otra") == "Una línea"
 
 
+def test_cut_at_first_tag_drops_prompt_scaffolding():
+    text = "Es como decir hazlo tú.\n\nSeed:\nY aquí está el error.\n\nCompletion: más"
+    assert cut_at_first_tag(text) == "Es como decir hazlo tú."
+    assert cut_at_first_tag("Completar:\n\nSeed:\nDesean escapar") == ""
+
+
+def test_cut_at_first_tag_keeps_labels_mid_line():
+    assert cut_at_first_tag("La semilla. Seed: no al inicio") == "La semilla. Seed: no al inicio"
+
+
 def test_cut_at_first_tag_leaves_plain_comparisons_alone():
     assert cut_at_first_tag("si a < b entonces") == "si a < b entonces"
 
