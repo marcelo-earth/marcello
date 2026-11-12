@@ -137,3 +137,23 @@ def test_surface_cell_counts_drops_single_class_strata():
 
     assert sum(cells.values()) == 2
     assert all(count > 0 for count in cells.values())
+
+
+def test_groups_spread_negatives_across_sources():
+    texts = [_text(10)] * 4 + [_text(10)] * 40 + [_text(10)] * 4
+    labels = [1] * 4 + [0] * 40 + [0] * 4
+    groups = ["pos"] * 4 + ["big"] * 40 + ["rare"] * 4
+    kept = length_matched_indices(texts, labels, seed=0, match_form=False, groups=groups)
+
+    negatives = [groups[i] for i in kept if labels[i] == 0]
+    assert len(negatives) == 4
+    assert negatives.count("rare") == 2
+
+
+def test_groups_do_not_change_how_many_are_kept():
+    texts = [_text(n) for n in range(5, 45)] * 2
+    labels = [1] * 40 + [0] * 40
+    groups = ["pos"] * 40 + ["a", "b"] * 20
+    plain = length_matched_indices(texts, labels, seed=3)
+    grouped = length_matched_indices(texts, labels, seed=3, groups=groups)
+    assert len(plain) == len(grouped)
