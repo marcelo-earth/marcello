@@ -119,6 +119,20 @@ def main():
             balanced_indices = undersample_indices(labels, seed=seed)
             how = "balanced"
 
+        # Languages Marcelo never writes are a true signal, not a shortcut: no
+        # positive exists there to balance against, so those negatives would
+        # otherwise compete for the few Spanish-prose slots and mostly drop out.
+        always_keep = set(out_cfg.get("always_keep_sources", []))
+        if always_keep and "source" in contrastive_dataset.column_names:
+            kept_set = set(balanced_indices)
+            extra = [
+                i
+                for i, source in enumerate(contrastive_dataset["source"])
+                if source in always_keep and i not in kept_set
+            ]
+            balanced_indices = sorted(balanced_indices + extra)
+            console.print(f"  Kept {len(extra)} extra negatives from {sorted(always_keep)}")
+
         contrastive_dataset = contrastive_dataset.select(balanced_indices)
         kept_sources: dict[str, int] = {}
         if "source" in contrastive_dataset.column_names:
@@ -126,10 +140,11 @@ def main():
                 if label == 0:
                     kept_sources[source] = kept_sources.get(source, 0) + 1
             console.print(f"  Negatives kept per source: {dict(sorted(kept_sources.items()))}")
-        kept = len(balanced_indices) // 2
+        kept_pos = sum(1 for label in contrastive_dataset["label"] if label == 1)
+        kept_neg = len(contrastive_dataset) - kept_pos
         console.print(
             f"  {how.capitalize()} to [green]{len(contrastive_dataset)}[/] samples "
-            f"({kept} pos + {kept} neg)\n"
+            f"({kept_pos} pos + {kept_neg} neg)\n"
         )
 
     # --- Split and Save ---
