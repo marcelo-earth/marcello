@@ -5,7 +5,9 @@ Two things in the raw output let a classifier separate them without reading:
 1. Markup. About half echo control tags (`<task:continue>`, `<lang:de>`) or
    HTML. "Has tags means negative" is a rule the policy escapes for free by not
    emitting tags, so the tags have to go before training, not after.
-2. Length. The generations run 138 words at the median against the positives'
+2. Prompt scaffolding. Most echo `Seed:` / `Completion:` labels, which no
+   positive contains, so those are cut the same way.
+3. Length. The generations run 138 words at the median against the positives'
    34, so the length-matched balancer threw away most of them.
 
 After the first tag that follows real content, the model nearly always derails:
@@ -21,6 +23,12 @@ import re
 
 # any tag-like token: <task:continue>, </seed>, <br>, <span class="x">, <\/p>
 TAG = re.compile(r"<\\?/?[A-Za-z][^<>\n]{0,60}>")
+# a line that opens with a prompt-template label, in either language
+SCAFFOLD = re.compile(
+    r"^[ \t]*(seeds?|complet\w*|continu\w*|task|translation|description|date|theme"
+    r"|location|(the )?end|final)[ \t]*:",
+    re.IGNORECASE | re.MULTILINE,
+)
 SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 
 
@@ -35,11 +43,11 @@ def strip_leading_tags(text: str) -> str:
 
 
 def cut_at_first_tag(text: str) -> str:
-    """Keep only what comes before the first tag after the content starts."""
+    """Keep only what comes before the first tag or scaffold label."""
     text = strip_leading_tags(text)
-    match = TAG.search(text)
-    if match:
-        text = text[: match.start()]
+    cuts = [m.start() for m in (TAG.search(text), SCAFFOLD.search(text)) if m]
+    if cuts:
+        text = text[: min(cuts)]
     return text.strip()
 
 
