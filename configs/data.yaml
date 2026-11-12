@@ -33,3 +33,5 @@ output:
   val_split: 0.15
   seed: 42
   balance_classes: true
+  # take negatives round-robin across sources inside each surface cell
+  spread_sources: true
