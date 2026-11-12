@@ -96,6 +96,7 @@ def main():
     # --- Balance classes ---
     out_cfg = config.get("output", {})
     surface_cells: dict[str, int] = {}
+    kept_sources: dict[str, int] = {}
     if out_cfg.get("balance_classes", True):
         texts = list(contrastive_dataset["text"])
         labels = list(contrastive_dataset["label"])
@@ -104,8 +105,11 @@ def main():
         if out_cfg.get("length_match", True):
             num_bins = out_cfg.get("length_bins", 8)
             match_form = out_cfg.get("match_form", True)
+            groups = None
+            if out_cfg.get("spread_sources", True) and "source" in contrastive_dataset.column_names:
+                groups = list(contrastive_dataset["source"])
             balanced_indices = length_matched_indices(
-                texts, labels, seed=seed, num_bins=num_bins, match_form=match_form
+                texts, labels, seed=seed, num_bins=num_bins, match_form=match_form, groups=groups
             )
             surface_cells = surface_cell_counts(
                 texts, labels, num_bins=num_bins, match_form=match_form
@@ -116,6 +120,12 @@ def main():
             how = "balanced"
 
         contrastive_dataset = contrastive_dataset.select(balanced_indices)
+        kept_sources: dict[str, int] = {}
+        if "source" in contrastive_dataset.column_names:
+            for source, label in zip(contrastive_dataset["source"], contrastive_dataset["label"]):
+                if label == 0:
+                    kept_sources[source] = kept_sources.get(source, 0) + 1
+            console.print(f"  Negatives kept per source: {dict(sorted(kept_sources.items()))}")
         kept = len(balanced_indices) // 2
         console.print(
             f"  {how.capitalize()} to [green]{len(contrastive_dataset)}[/] samples "
@@ -125,6 +135,10 @@ def main():
     # --- Split and Save ---
     output_path = Path(out_cfg.get("path", "data/processed/"))
     output_path.mkdir(parents=True, exist_ok=True)
+
+    # the processed format stays text + label; sources go to the manifest
+    if "source" in contrastive_dataset.column_names:
+        contrastive_dataset = contrastive_dataset.remove_columns("source")
 
     # cast label to ClassLabel so train_test_split can stratify
     from datasets import ClassLabel
@@ -155,6 +169,7 @@ def main():
             for name, ds in [("train", split["train"]), ("val", split["test"])]
         },
         "negative_source_counts": dict(sorted(sampler.source_counts.items())),
+        "kept_negative_source_counts": kept_sources,
         "surface_cell_counts": surface_cells,
         "text_hash": corpus_hash(list(split["train"]["text"]) + list(split["test"]["text"])),
     }
