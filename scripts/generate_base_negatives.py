@@ -4,7 +4,8 @@ The classifier scores free continuations from Qwen2.5-1.5B during GRPO, so it ha
 have seen some. Seeds come from the training positives only, through the same
 extraction GRPO uses, and the sampling settings mirror configs/grpo.yaml.
 
-Output is JSONL under data/raw/negative_samples/, which NegativeSampler reads.
+Output is raw JSONL under data/raw/base_generations/; run clean_base_negatives.py
+to turn it into negatives NegativeSampler reads.
 The run resumes from what already exists, like generate_negatives.py.
 
 Usage:
@@ -40,7 +41,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--model", default="Qwen/Qwen2.5-1.5B")
     parser.add_argument("--train-dir", default="data/processed/train")
-    parser.add_argument("--output", default="data/raw/negative_samples/base_generations.jsonl")
+    parser.add_argument("--output", default="data/raw/base_generations/mac.jsonl")
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=0.95)
