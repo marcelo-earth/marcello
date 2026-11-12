@@ -56,6 +56,8 @@ class NegativeSampler:
         self._rng = random.Random(seed)
         self._pipeline = None
         self.source_counts: dict[str, int] = {}
+        # one entry per negative, aligned with generate_negatives' output
+        self.negative_sources: list[str] = []
 
     def _get_pipeline(self):
         """Lazy-load the text generation pipeline (only for llm_rephrase)."""
@@ -91,6 +93,18 @@ class NegativeSampler:
         self._rng.shuffle(sentences)
         return " ".join(sentences)
 
+    def _source_group(self, path: Path) -> str:
+        """Which source a negative came from, for source-aware balancing.
+
+        A subdirectory is one source. At the top level each .jsonl file is its
+        own source (the cleaned base generations live there), while the loose
+        .txt files are together the hand-written prewritten set.
+        """
+        relative = path.relative_to(self.prewritten_path)
+        if len(relative.parts) > 1:
+            return relative.parts[0]
+        return path.stem if path.suffix == ".jsonl" else "prewritten"
+
     def _load_prewritten(self) -> list[str]:
         """Load pre-written negative samples from the directory.
 
@@ -103,10 +117,12 @@ class NegativeSampler:
         """
         texts = []
         self.source_counts = {}
+        self.negative_sources = []
 
         def record(path: Path, count: int) -> None:
             key = str(path.parent.relative_to(self.prewritten_path)) or "."
             self.source_counts[key] = self.source_counts.get(key, 0) + count
+            self.negative_sources.extend([self._source_group(path)] * count)
 
         for path in sorted(self.prewritten_path.rglob("*.txt")):
             content = path.read_text(encoding="utf-8").strip()
@@ -134,8 +150,10 @@ class NegativeSampler:
         """Generate negative samples from a list of positive texts."""
         if self.strategy == NegativeStrategy.PREWRITTEN:
             negatives = self._load_prewritten()
-            self._rng.shuffle(negatives)
-            return negatives
+            paired = list(zip(negatives, self.negative_sources))
+            self._rng.shuffle(paired)
+            self.negative_sources = [source for _, source in paired]
+            return [text for text, _ in paired]
 
         negatives = []
         for text in positive_texts:
@@ -158,7 +176,8 @@ class NegativeSampler:
     def build_contrastive_dataset(self, positive_dataset: Dataset) -> Dataset:
         """Take a dataset of positive samples and create a balanced contrastive dataset.
 
-        Returns a dataset with columns: text, label (1=Marcelo, 0=generic)
+        Returns a dataset with columns: text, label (1=Marcelo, 0=generic), and
+        source (the negative's file, "positive" for Marcelo's texts).
         """
         positive_texts = positive_dataset["text"]
 
@@ -166,10 +185,16 @@ class NegativeSampler:
 
         all_texts = list(positive_texts) + negative_texts
         all_labels = [1] * len(positive_texts) + [0] * len(negative_texts)
+        sources = self.negative_sources
+        if len(sources) != len(negative_texts):
+            sources = [self.strategy.value] * len(negative_texts)
+        all_sources = ["positive"] * len(positive_texts) + sources
 
         # shuffle together
-        combined = list(zip(all_texts, all_labels))
+        combined = list(zip(all_texts, all_labels, all_sources))
         self._rng.shuffle(combined)
-        texts, labels = zip(*combined)
+        texts, labels, sources = zip(*combined)
 
-        return Dataset.from_dict({"text": list(texts), "label": list(labels)})
+        return Dataset.from_dict(
+            {"text": list(texts), "label": list(labels), "source": list(sources)}
+        )
