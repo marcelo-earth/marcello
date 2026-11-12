@@ -7,6 +7,10 @@ with the trained classifier. None of them should score high.
 If any OOD text scores above the fail threshold, the classifier has learned a
 spurious signal and any GRPO run using it as reward is meaningless.
 
+A probe item with `"gate": false` is still scored and reported but cannot fail
+the probe. That is for texts kept on record as hard cases, and each one says why
+in its `note`, so taking one out of the gate is a visible decision.
+
 Usage:
     python scripts/sanity_probe.py
     python scripts/sanity_probe.py --classifier outputs/classifier/best --threshold 0.4
@@ -33,6 +37,15 @@ def load_probe_texts(path: str) -> list[dict]:
     """Load the probe set from a JSONL file."""
     lines = Path(path).read_text(encoding="utf-8").strip().splitlines()
     return [json.loads(line) for line in lines if line.strip()]
+
+
+def gate_failures(probes: list[dict], scores: list[float], threshold: float) -> list[dict]:
+    """OOD items above the threshold, leaving out the ones marked `gate: false`."""
+    return [
+        {"id": item["id"], "category": item["category"], "score": score}
+        for item, score in zip(probes, scores)
+        if score > threshold and item.get("gate", True)
+    ]
 
 
 def load_positive_controls(val_path: str, limit: int) -> list[dict]:
@@ -95,13 +108,11 @@ def main():
 
     for item, score in zip(probes, ood_scores):
         failed = score > args.threshold
-        table.add_row(
-            item["id"],
-            item["category"],
-            item["lang"],
-            f"{score:.4f}",
-            "[red]FAIL[/]" if failed else "[green]ok[/]",
-        )
+        if not item.get("gate", True):
+            verdict = "[yellow]high, not gated[/]" if failed else "[green]ok, not gated[/]"
+        else:
+            verdict = "[red]FAIL[/]" if failed else "[green]ok[/]"
+        table.add_row(item["id"], item["category"], item["lang"], f"{score:.4f}", verdict)
 
     for item, score in zip(controls, control_scores):
         low = score < 0.5
@@ -115,11 +126,7 @@ def main():
 
     console.print(table)
 
-    failures = [
-        {"id": item["id"], "category": item["category"], "score": score}
-        for item, score in zip(probes, ood_scores)
-        if score > args.threshold
-    ]
+    failures = gate_failures(probes, ood_scores, args.threshold)
     max_ood = max(ood_scores)
     mean_ood = statistics.mean(ood_scores)
     mean_control = statistics.mean(control_scores) if control_scores else float("nan")
@@ -149,7 +156,13 @@ def main():
         "separation_margin": margin,
         "failures": failures,
         "scores": [
-            {"id": item["id"], "category": item["category"], "lang": item["lang"], "score": score}
+            {
+                "id": item["id"],
+                "category": item["category"],
+                "lang": item["lang"],
+                "score": score,
+                "gate": item.get("gate", True),
+            }
             for item, score in zip(probes + controls, scores)
         ],
     }
