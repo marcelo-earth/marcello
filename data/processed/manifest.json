@@ -1,46 +1,55 @@
 {
   "counts_per_class": {
     "train": {
-      "positive": 245,
-      "negative": 246
+      "positive": 248,
+      "negative": 278
     },
     "val": {
       "positive": 44,
-      "negative": 43
+      "negative": 49
     }
   },
   "negative_source_counts": {
     ".": 239,
     "blog": 28,
-    "multilingual": 24,
-    "poetry": 85,
+    "multilingual": 49,
+    "poetry": 97,
     "rephrased": 178,
     "wikipedia": 21
   },
+  "kept_negative_source_counts": {
+    "rephrased": 107,
+    "poetry": 49,
+    "base_generations_clean": 78,
+    "prewritten": 26,
+    "multilingual": 49,
+    "wikipedia": 9,
+    "blog": 9
+  },
   "surface_cell_counts": {
-    "(0, 'en', False)": 11,
-    "(0, 'es', False)": 16,
-    "(0, 'es', True)": 2,
-    "(1, 'en', False)": 12,
-    "(1, 'es', False)": 9,
-    "(1, 'es', True)": 16,
+    "(0, 'en', False)": 13,
+    "(0, 'es', False)": 20,
+    "(0, 'es', True)": 3,
+    "(1, 'en', False)": 10,
+    "(1, 'es', False)": 5,
+    "(1, 'es', True)": 20,
     "(2, 'en', False)": 7,
     "(2, 'es', False)": 3,
-    "(2, 'es', True)": 27,
+    "(2, 'es', True)": 22,
     "(3, 'en', False)": 11,
     "(3, 'es', True)": 22,
-    "(4, 'en', False)": 10,
+    "(4, 'en', False)": 8,
     "(4, 'es', False)": 2,
-    "(4, 'es', True)": 30,
+    "(4, 'es', True)": 22,
     "(5, 'en', False)": 20,
     "(5, 'es', False)": 1,
-    "(5, 'es', True)": 16,
-    "(6, 'en', False)": 33,
+    "(5, 'es', True)": 23,
+    "(6, 'en', False)": 34,
     "(6, 'es', False)": 1,
-    "(6, 'es', True)": 7,
-    "(7, 'en', False)": 27,
+    "(6, 'es', True)": 9,
+    "(7, 'en', False)": 30,
     "(7, 'es', False)": 1,
     "(7, 'es', True)": 5
   },
-  "text_hash": "ab52546587c532ad4a79718e37588dd1f24f27c16abc81f610034a296d11ddac"
+  "text_hash": "8ed4afd0f23a9faa0088b410a470d39b1fc6eff0cbf296cd4e50e735d9a084b5"
 }
